@@ -60,9 +60,14 @@ export async function request(
 export const api = {
   catalog: async (signal?: AbortSignal) =>
     parseCatalog(await request('/catalog', { signal, cache: 'no-store' })),
-  generateCourse: async (eventId: string, settings: CourseSettings) =>
+  generateCourse: async (
+    eventId: string,
+    settings: CourseSettings,
+    signal?: AbortSignal,
+  ) =>
     parseCourse(
       await request('/courses/generate', {
+        signal,
         method: 'POST',
         body: JSON.stringify({ eventId, settings }),
       }),
@@ -74,9 +79,10 @@ export const api = {
         body: JSON.stringify({ course }),
       }),
     ),
-  geocode: async (address: string) =>
+  geocode: async (address: string, signal?: AbortSignal) =>
     parseCoordinate(
       await request('/places/geocode', {
+        signal,
         method: 'POST',
         body: JSON.stringify({ address }),
       }),

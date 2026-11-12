@@ -194,7 +194,7 @@ test('마커 미리보기와 출처 차이 보기', async ({ page }) => {
     .getByRole('button', { name: '안내 상이' })
     .click()
   await expect(
-    page.getByRole('heading', { name: '운영 시간 안내 차이' }),
+    page.getByRole('heading', { name: '출처마다 안내가 달라요' }),
   ).toBeVisible()
   await expect(page.getByText('시연 안내 A')).toBeVisible()
   await expect(page.getByText('시연 안내 B')).toBeVisible()
@@ -219,10 +219,10 @@ test('생성→직접 입력→순서 수정→저장→새로고침→공유→
   await page
     .locator('.stop-card')
     .nth(2)
-    .getByRole('button', { name: '직접 입력' })
+    .getByRole('link', { name: '직접 입력' })
     .click()
   await page.getByLabel('장소 이름').fill('직접 정한 점심 장소')
-  await page.getByRole('button', { name: '일정에 반영하기' }).click()
+  await page.getByRole('button', { name: '코스에 반영' }).click()
   await expect(page.locator('.stop-card').nth(2)).toContainText(
     '직접 정한 점심 장소',
   )
@@ -232,9 +232,9 @@ test('생성→직접 입력→순서 수정→저장→새로고침→공유→
   await expect(page.locator('.stop-card').nth(1)).toContainText(
     '직접 정한 점심 장소',
   )
-  await page.getByRole('button', { name: '저장 · 공유' }).click()
+  await page.getByRole('link', { name: '저장 · 공유' }).click()
   await page.getByRole('button', { name: '내 코스에 저장' }).click()
-  await expect(page.getByRole('status')).toContainText('저장했어요')
+  await expect(page.locator('.toast')).toContainText('저장했어요')
   await page.getByRole('button', { name: '공유 링크 만들기' }).click()
   const link = await page.getByLabel('공유 링크', { exact: true }).inputValue()
   expect(link).not.toContain('기흥역')
@@ -246,7 +246,10 @@ test('생성→직접 입력→순서 수정→저장→새로고침→공유→
   )
   expect(payload.settings.origin).toBe('')
   expect(payload.settings.originLocation).toBeNull()
-  await page.getByRole('button', { name: '닫기', exact: true }).click()
+  await page
+    .getByRole('navigation')
+    .getByRole('link', { name: '내 코스' })
+    .click()
   await page
     .getByRole('navigation')
     .getByRole('link', { name: '내 코스' })

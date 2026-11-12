@@ -73,7 +73,46 @@ n8n은 브라우저가 호출하는 공개 webhook이 아니라 서버 측 수�
 
 `programs` 항목: `{id, name, category, price: number|null, durationMinutes}`. `sources` 항목은 `source`와 같다. `conflicts`: `{field, entries: [{sourceName, value, url: string|null}]}`. 출처 차이를 보존해야 안내 상이 상세가 표시된다. 신청은 `applicationUrl`의 외부 채널에서만 진행한다.
 
-혼잡도 데이터는 확정되지 않아 FE에서 표시하지 않는다. 추후 필드를 추가하더라도 반드시 ‘예측·제보 기반 추정’ 라벨을 함께 설계한다.
+행사 혼잡도 데이터는 확정되지 않아 행사 화면에서는 표시하지 않는다. 이전 시설 화면의 이용 인원·정원 비율은 아래 별도 시설 응답으로 표시하며 예측 혼잡도와 구분한다.
+
+## GET /facilities — 이전 시설 서비스
+
+`src/domain/facilities.ts`의 `FacilityCatalog`가 응답 기준이며 런타임 검증 후 반영한다. 행사 catalog와 같은 주기·탭 복귀·온라인 복구 정책으로 갱신하며 실패 시 마지막 정상값과 오류를 함께 표시한다. 최초 로딩·최초 오류·재시도·빈 목록 상태를 제공한다.
+
+```ts
+type FacilityCatalog = {
+  revision: string
+  updatedAt: string // ISO 8601
+  items: Facility[]
+  events: { id: string; name: string; facilityId: string; schedule: string }[]
+}
+// Facility는 Place 공통 필드에 다음을 추가한다.
+type FacilityFields = {
+  group: string // 예: 운동·체육
+  type: string // 예: 수영장
+  town: string // 예: 구갈동
+  holiday: string
+  occupancy: {
+    current: number // 0 이상의 정수
+    capacity: number // 1 이상의 정수
+    observedAt: string
+    updatedAt: string
+  } | null
+  parking: {
+    name: string
+    type: string
+    available: number | null
+    total: number | null
+    observedAt: string | null
+  } | null
+  eventIds: string[]
+  schematicPosition: [number, number] | null // 시연 배치도 전용, 서버는 null
+}
+```
+
+정원 대비 이용률은 50% 미만 여유, 50~80% 미만 보통, 80% 이상 혼잡이라는 원본 UI 기준을 적용한다. `occupancy: null`은 정보 없음이며 0명/여유로 바꾸지 않는다. 주차의 `available: 0`은 확인된 0면, `null`은 미제공이다. 관측 시각과 수집 반영 시각을 구분하고 원문 출처를 보존한다. `eventIds`는 같은 응답의 행사 ID와 연결한다. 연결 행사가 없거나 시설이 삭제되면 다음 행동을 제공한다.
+
+n8n 등 수집 작업이 시설 ID를 유지하며 관측값·시각·revision을 DB에 반영하면 다음 조회에서 목록·상세·마커 선택 카드에 함께 반영된다. 실측 제공처·수집 주기·판정 기준은 실제 연동 전에 백엔드와 확정해야 한다. FE에 표시된 가상 시설 수치는 실측값이 아니다.
 
 ## 문장 검색 (S1)
 
@@ -146,6 +185,8 @@ n8n은 브라우저가 호출하는 공개 webhook이 아니라 서버 측 수�
 
 초기 추천은 선택 시간 내 후보만 채운다. 사용자가 수정해서 종료 시간을 넘으면 삭제하지 않고 경고한다. 실측 운영 시간·프로그램 시작 시간·경로 제약을 고려한 최종 추천은 백엔드 생성/재계산 응답에서 보장해야 한다.
 
+생성은 별도 대기 화면으로 이동하며 실패 시 입력 조건을 유지하고 재시도한다. 취소·화면 이탈 시 진행 중인 geocode/generate 요청을 AbortSignal로 중단하여 뒤늦은 응답이 다른 화면을 덮지 않도록 한다.
+
 ## 계정·문의·공지
 
 이 경로들도 합의 전 제안이다. 세션은 HttpOnly 쿠키 사용을 전제로 하며 FE에 토큰을 보관하지 않는다.
@@ -163,6 +204,8 @@ n8n은 브라우저가 호출하는 공개 webhook이 아니라 서버 측 수�
 
 `User`: `{id,name,email}`. 오류는 HTTP status로 판단한다. 인증 실패 401, 요청 과다 429 등의 UX가 있다. 비밀번호 재설정·가입은 이메일 안내 확인 흐름이며 실제 발송은 서버 책임이다.
 
+시연 모드에는 명시적인 시연 계정 진입 및 문의 완료 미리보기가 있다. 시연 문의는 전송되지 않았음을 완료 화면에 표시한다. 서버 모드에서는 실제 문의 응답 성공 후에만 완료로 이동하며 오류 시 입력을 유지한다. 로그아웃 확인·완료, 회원 탈퇴 확인도 연결되어 있다. 현재 API가 `joinedAt`을 제공하지 않으므로 실제 계정 가입일은 미제공으로 표시한다.
+
 ## 현재 보관·공유 방식과 다음 연결
 
 - 내 코스·관심 행사·설정은 브라우저 localStorage에 저장한다. 로그인 계정별 클라우드 저장은 아직 없다. 계정 동기화를 붙일 때 GET/PUT/DELETE courses 저장소 어댑터를 추가해야 한다.
@@ -174,5 +217,7 @@ n8n은 브라우저가 호출하는 공개 webhook이 아니라 서버 측 수�
 ## 지도 운영
 
 Leaflet과 OpenStreetMap 배경 지도, 숫자 마커, 클릭 정보 카드, 방문 순서 점선을 사용한다. 배경 실패 시에도 목록으로 위치/출처 정보를 확인할 수 있다. Figma의 지도 캡처 이미지를 실제 지도처럼 사용하지 않는다.
+
+이전 시설 서비스의 가상 배치도는 Figma 원본의 정적 도형 레이어 위에 선택 가능한 마커를 배치하고 가상임을 표시한다. `source.isDemo: false` 시설 데이터는 실제 `location` 좌표로 Leaflet에 표시한다. 미확인 좌표는 지도에서 제외하고 상세 목록으로 안내한다.
 
 출처 표시는 유지하며 서버/SDK 변경 시에도 이용 조건을 지킨다. 대규모 운영 전 지도 제공사·쿼터·타일 이용 정책을 확정한다. [Leaflet 문서](https://leafletjs.com/reference.html), [OSM 타일 이용 정책](https://operations.osmfoundation.org/policies/tiles/), [카카오맵 이동수단별 길찾기 링크](https://apis.map.kakao.com/web/guide/#routeurl).

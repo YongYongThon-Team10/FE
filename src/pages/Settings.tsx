@@ -5,6 +5,7 @@ import { useApp } from '@/state/context'
 import type { Preferences } from '@/domain/models'
 import { go } from '@/hooks/useRoute'
 import { api, isDemo, request } from '@/services/api'
+import { sampleUser } from '@/data/scenarios'
 
 export function Login({
   mode = 'login',
@@ -97,7 +98,7 @@ export function Login({
             />
           </label>
         )}
-        <button className="primary" type="submit" disabled={busy || isDemo}>
+        <button className="primary" type="submit" disabled={busy}>
           {busy
             ? '처리 중…'
             : mode === 'login'
@@ -109,7 +110,8 @@ export function Login({
       </form>
       {isDemo && (
         <p className="small muted">
-          계정 서비스 연결 준비 중이에요. 게스트로 주요 기능을 둘러볼 수 있어요.
+          계정 서비스 연결 준비 중이에요. 게스트 또는 시연 계정으로 화면 흐름을
+          확인할 수 있어요.
         </p>
       )}
       {message && (
@@ -120,6 +122,18 @@ export function Login({
       <button className="secondary" type="button" onClick={() => go('/')}>
         게스트로 입장
       </button>
+      {isDemo && (
+        <button
+          className="text-button small"
+          type="button"
+          onClick={() => {
+            app.demoLogin()
+            go('/saved')
+          }}
+        >
+          시연 계정으로 둘러보기
+        </button>
+      )}
       <div className="row auth-links">
         <a href="#/reset-password">비밀번호 찾기</a>
         <span>·</span>
@@ -132,7 +146,10 @@ export function Login({
 }
 export function Settings() {
   const { user, setUser, setToast } = useApp()
-  const [logout, setLogout] = useState(false)
+  const [logout, setLogout] = useState(
+    new URLSearchParams(window.location.hash.split('?')[1]).get('dialog') ===
+      'logout',
+  )
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const leave = async () => {
@@ -142,7 +159,7 @@ export function Settings() {
       setUser(null)
       setLogout(false)
       setToast('로그아웃했어요.')
-      go('/login')
+      go('/logout-complete')
     } catch (e) {
       setError(e instanceof Error ? e.message : '로그아웃하지 못했어요.')
     } finally {
@@ -200,7 +217,11 @@ export function Settings() {
       )}
       <p className="tiny settings-caption">내 계정을 안전하게 관리하세요.</p>
       {logout && (
-        <Modal title="로그아웃할까요?" onClose={() => setLogout(false)}>
+        <Modal
+          eyebrow="로그아웃"
+          title="로그아웃할까요?"
+          onClose={() => setLogout(false)}
+        >
           <p className="small muted">
             저장한 코스는 이 브라우저에 남아 있어요.
           </p>
@@ -313,16 +334,18 @@ export function Notifications() {
 }
 export function Privacy() {
   const app = useApp()
-  const [confirm, setConfirm] = useState(false)
+  const [confirm, setConfirm] = useState(
+    new URLSearchParams(window.location.hash.split('?')[1]).get('dialog') ===
+      'delete',
+  )
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const remove = async () => {
     setBusy(true)
     setError('')
     try {
-      await api.deleteAccount()
-      app.setUser(null)
-      app.setCourses([])
+      if (!isDemo) await api.deleteAccount()
+      app.clearLocalAccount()
       app.setPreferences({ ...app.preferences, location: false })
       setConfirm(false)
       app.setToast('계정 삭제가 완료됐어요.')
@@ -381,9 +404,21 @@ export function Privacy() {
         </p>
       )}
       {confirm && (
-        <Modal title="정말 탈퇴하시겠어요?" onClose={() => setConfirm(false)}>
+        <Modal
+          eyebrow="계정 삭제"
+          title="정말 탈퇴하시겠어요?"
+          onClose={() => setConfirm(false)}
+        >
           <p className="small muted">
-            계정과 연결된 정보가 삭제됩니다. 탈퇴 후에는 복구할 수 없어요.
+            탈퇴하면 계정과 저장한 정보가 삭제됩니다. 신중하게 결정해 주세요.
+          </p>
+          <div className="delete-information">
+            <strong>삭제되는 정보</strong>• 로그인 및 계정 정보
+            <br />• 저장한 코스와 관심 행사
+            <br />• 개인화 설정
+          </div>
+          <p className="tiny danger strong">
+            탈퇴 후에는 정보를 복구할 수 없어요.
           </p>
           {error && (
             <p className="error small" role="alert">
@@ -413,28 +448,53 @@ export function Privacy() {
 export function Account() {
   const { user } = useApp()
   return (
-    <section className="panel stack">
-      <h1>로그인 정보</h1>
-      {user ? (
-        <dl className="info-list">
+    <>
+      <h1 className="settings-title">내 로그인 정보</h1>
+      <p className="settings-description">현재 로그인한 계정을 확인하세요.</p>
+      <section className="panel">
+        <dl className="account-details">
           <div>
-            <dt>이름</dt>
-            <dd>{user.name}</dd>
+            <dt>닉네임</dt>
+            <dd>{user?.name ?? '게스트'}</dd>
           </div>
           <div>
             <dt>이메일</dt>
-            <dd>{user.email}</dd>
+            <dd>{user?.email ?? '로그인 정보 없음'}</dd>
+          </div>
+          <div>
+            <dt>로그인 방식</dt>
+            <dd>
+              {user?.id === sampleUser.id
+                ? '이메일 로그인 · 시연'
+                : user
+                  ? '이메일 로그인'
+                  : '게스트 이용'}
+            </dd>
+          </div>
+          <div>
+            <dt>가입일</dt>
+            <dd>{user?.id === sampleUser.id ? '2026.11.01' : '정보 없음'}</dd>
           </div>
         </dl>
-      ) : (
-        <>
-          <p className="small muted">현재 게스트로 이용 중이에요.</p>
-          <a className="primary" href="#/login">
-            로그인하기
-          </a>
-        </>
+      </section>
+      <section className="panel tinted stack">
+        <h2 className="h3 blue">안전한 계정 이용</h2>
+        <p className="small muted">
+          공용 기기에서는 이용을 마친 뒤<br />
+          로그아웃해 주세요.
+        </p>
+      </section>
+      {user?.id === sampleUser.id && (
+        <p className="tiny settings-caption">
+          계정 정보는 화면 구성을 위한 예시입니다.
+        </p>
       )}
-    </section>
+      {!user && (
+        <a className="primary" href="#/login">
+          로그인하기
+        </a>
+      )}
+    </>
   )
 }
 type Notice = {
@@ -446,11 +506,32 @@ type Notice = {
 }
 const exampleNotices: Notice[] = [
   {
+    id: 'update',
+    title: '더 편리해진 내 코스를 만나보세요',
+    body: '안녕하세요. 더 즐거운 나들이를 위해 내 코스와 설정 화면을 새롭게 준비했어요.\n\n나에게 맞는 알림\n저장한 행사 소식과 코스 안내를 원하는 대로 켜고 끌 수 있어요.\n\n한곳에서 관리하는 내 정보\n설정에서 로그인 정보와 개인정보 이용 범위를 쉽게 확인할 수 있어요.\n\n앞으로도 편안한 나들이를 함께할게요. 감사합니다.',
+    publishedAt: '2026-11-10T00:00:00+09:00',
+    category: '업데이트 소식',
+  },
+  {
+    id: 'notifications',
+    title: '알림 설정 기능이 추가됐어요',
+    body: '원하는 소식의 수신 선호를 설정에서 변경할 수 있어요. 실제 알림 발송은 서비스 연결 후 제공됩니다.',
+    publishedAt: '2026-11-06T00:00:00+09:00',
+    category: '업데이트',
+  },
+  {
+    id: 'guide',
+    title: '즐거운 나들이를 위한 이용 안내',
+    body: '방문 전 공식 출처의 운영시간·요금·신청 방법을 확인해 주세요.',
+    publishedAt: '2026-11-01T00:00:00+09:00',
+    category: '안내',
+  },
+  {
     id: 'welcome',
     title: '함께 만드는 나들이의 시작',
-    body: '마음에 드는 행사에서 나만의 하루를 만들어 보세요. 현재 보이는 행사와 장소는 Figma의 시연 데이터입니다.',
-    publishedAt: '2026-11-12T00:00:00+09:00',
-    category: '시연 안내',
+    body: '마음에 드는 행사에서 우리의 하루를 시작해 보세요. 현재 시연 모드의 행사·장소는 가상 데이터입니다.',
+    publishedAt: '2026-10-28T00:00:00+09:00',
+    category: '공지',
   },
 ]
 export function Notices({ id }: { id?: string }) {
@@ -513,7 +594,7 @@ export function Notices({ id }: { id?: string }) {
               timeZone: 'Asia/Seoul',
             })}
           </time>
-          <p className="notice-body small">{selected.body}</p>
+          <p className="notice-body small notices-detail">{selected.body}</p>
           <a className="secondary" href="#/notices">
             목록으로 돌아가기
           </a>
@@ -547,19 +628,26 @@ export function Notices({ id }: { id?: string }) {
   )
 }
 export function Contact() {
-  const { user } = useApp()
-  const [email, setEmail] = useState(user?.email ?? '')
-  const [title, setTitle] = useState('')
-  const [message, setMessage] = useState('')
-  const [sent, setSent] = useState(false)
+  const app = useApp()
+  const [email, setEmail] = useState(app.user?.email ?? '')
+  const [title, setTitle] = useState(
+    app.preview?.id === '237:371' ? '저장한 코스가 보이지 않아요' : '',
+  )
+  const [message, setMessage] = useState(
+    app.preview?.id === '237:371'
+      ? '어제 저장한 코스가 내 코스 목록에 보이지 않아요. 확인 부탁드립니다.'
+      : '',
+  )
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const send = async () => {
     setBusy(true)
     setError('')
     try {
-      await api.inquiry(email, title, message)
-      setSent(true)
+      if (!isDemo) await api.inquiry(email, title, message)
+      else await new Promise((resolve) => window.setTimeout(resolve, 400))
+      app.setContactReceipt({ email, isDemo })
+      go('/contact-complete')
     } catch (e) {
       setError(
         e instanceof Error
@@ -570,19 +658,6 @@ export function Contact() {
       setBusy(false)
     }
   }
-  if (sent)
-    return (
-      <section className="panel stack">
-        <p className="eyebrow">접수 완료</p>
-        <h1>문의를 잘 받았어요</h1>
-        <p className="small muted">
-          보내주신 내용을 확인한 뒤 {email}로 답변드릴게요.
-        </p>
-        <a className="primary" href="#/settings">
-          설정으로 돌아가기
-        </a>
-      </section>
-    )
   return (
     <>
       <h1 className="settings-title">무엇을 도와드릴까요?</h1>
@@ -602,10 +677,10 @@ export function Contact() {
             <input
               type="email"
               required
-              value={email}
               maxLength={200}
-              onChange={(e) => setEmail(e.target.value)}
               autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
             />
           </label>
           <label className="field">
@@ -637,12 +712,12 @@ export function Contact() {
             {error}
           </p>
         )}
-        <button className="primary" type="submit" disabled={busy || isDemo}>
+        <button className="primary" type="submit" disabled={busy}>
           {busy ? '접수 중…' : '문의 보내기'}
         </button>
         {isDemo && (
           <p className="settings-description">
-            문의 접수 서비스 연결 준비 중이에요. 아직 문의가 전송되지 않습니다.
+            시연 모드에서는 문의를 전송하지 않고 완료 화면을 확인합니다.
           </p>
         )}
       </form>
@@ -658,6 +733,9 @@ export function Guide() {
       </p>
       <a className="secondary" href="#/">
         처음부터 시작하기 →
+      </a>
+      <a className="secondary" href="#/help">
+        예외 상황 · 저장과 공유 도움말 →
       </a>
       <section className="panel guide-steps">
         {[

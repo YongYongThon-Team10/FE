@@ -7,11 +7,13 @@ export function Calendar({
   onSelect,
   events = [],
   anchor = dateKey(),
+  showRanges = false,
 }: {
   selected: string
   onSelect: (value: string) => void
   events?: Event[]
   anchor?: string
+  showRanges?: boolean
 }) {
   const [offset, setOffset] = useState(0)
   const dates = weekDates(anchor, offset)
@@ -78,6 +80,38 @@ export function Calendar({
           )
         })}
       </div>
+      {showRanges && (
+        <div className="week-event-ranges">
+          {events
+            .filter(
+              (e) =>
+                dateKey(new Date(e.startsAt)) <= dates[6] &&
+                dateKey(new Date(e.endsAt)) >= dates[0],
+            )
+            .slice(0, 2)
+            .map((e, i) => {
+              const start = Math.max(
+                0,
+                dates.findIndex((d) => d >= dateKey(new Date(e.startsAt))),
+              )
+              const end = dates.filter(
+                (d) => d <= dateKey(new Date(e.endsAt)),
+              ).length
+              return (
+                <span
+                  className={i ? 'coral-label' : 'blue-label'}
+                  key={e.id}
+                  style={{
+                    gridColumn: `${start + 1} / ${Math.max(start + 2, end + 1)}`,
+                    gridRow: i + 1,
+                  }}
+                >
+                  {e.name}
+                </span>
+              )
+            })}
+        </div>
+      )}
       {selected && (
         <p className="tiny muted calendar-selection">
           {selected} 선택 · 날짜를 다시 누르면 해제돼요.

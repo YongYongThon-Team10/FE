@@ -92,14 +92,16 @@ export function Home() {
             검색
           </button>
         </form>
-        <button
-          className="text-button small align-left"
-          type="button"
-          disabled={!text.trim() || interpreting}
-          onClick={() => void interpret()}
-        >
-          {interpreting ? '조건 확인 중…' : '문장에서 조건 찾기 ↗'}
-        </button>
+        {text.trim() && (
+          <button
+            className="text-button small align-left"
+            type="button"
+            disabled={!text.trim() || interpreting}
+            onClick={() => void interpret()}
+          >
+            {interpreting ? '조건 확인 중…' : '문장에서 조건 찾기 ↗'}
+          </button>
+        )}
         {message && (
           <p className="info small" role="status">
             {message}
@@ -135,6 +137,9 @@ export function Home() {
           </p>
         )}
       </section>
+      <a className="secondary" href="#/facilities">
+        기흥 시설 · 주차 · 주변 행사 둘러보기 →
+      </a>
     </>
   )
 }

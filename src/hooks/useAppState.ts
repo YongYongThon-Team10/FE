@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type {
   Coordinate,
   Course,
+  CourseSettings,
   Filters,
   Preferences,
   User,
@@ -12,6 +13,8 @@ import { courseSnapshot } from '@/domain/snapshots'
 import { useCatalog } from '@/hooks/useCatalog'
 import { useStorage } from '@/hooks/useStorage'
 import { api, isDemo } from '@/services/api'
+import { findDesignFrame } from '@/data/designFrames'
+import { designCourse, sampleSettings, sampleUser } from '@/data/scenarios'
 
 function validateCourses(value: unknown): Course[] {
   if (!Array.isArray(value)) throw new Error()
@@ -41,32 +44,87 @@ const defaults: Preferences = {
   marketing: false,
 }
 
-export function useAppState() {
+export function useAppState(previewId?: string) {
+  const preview = isDemo ? findDesignFrame(previewId ?? null) : undefined
+  const [sample] = useState(() =>
+    preview?.fixture === 'course' ? designCourse() : null,
+  )
   const catalog = useCatalog()
-  const [filters, setFilters] = useState<Filters>(emptyFilters)
+  const [filters, setFilters] = useState<Filters>(
+    preview?.id === '205:2'
+      ? {
+          ...emptyFilters,
+          date: '2026-11-14',
+          companions: ['아이와'],
+          districts: ['기흥구'],
+          freeOnly: true,
+          environment: 'outdoor',
+          categories: ['park'],
+        }
+      : emptyFilters,
+  )
   const [courses, setCourses, courseStorageError] = useStorage<Course[]>(
     'yongin.courses.v1',
-    [],
+    sample ? [sample] : [],
     validateCourses,
     (value) => value.map((c) => courseSnapshot(c)),
+    !preview,
   )
   const [draft, setDraft, draftStorageError] = useStorage<Course | null>(
     'yongin.draft.v1',
-    null,
+    sample,
     (v) => (v === null ? null : parseCourse(v)),
     (value) => (value === null ? null : courseSnapshot(value)),
+    !preview,
   )
   const [preferences, storePreferences, preferenceStorageError] = useStorage(
     'yongin.preferences.v1',
-    defaults,
+    preview ? { ...defaults, push: true } : defaults,
     validatePreferences,
+    (value) => value,
+    !preview,
   )
   const [favorites, setFavorites, favoriteStorageError] = useStorage<string[]>(
     'yongin.favorites.v1',
     [],
     validateFavorites,
+    (value) => value,
+    !preview,
   )
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<User | null>(
+    preview?.fixture === 'account'
+      ? sampleUser
+      : preview?.fixture === 'course' || preview?.id === '199:3598'
+        ? { ...sampleUser, name: '남곽춘' }
+        : null,
+  )
+  const [setup, setSetup] = useState<{
+    eventId: string
+    settings: CourseSettings
+  } | null>(
+    sample ? { eventId: sample.eventId, settings: sample.settings } : null,
+  )
+  const [generation, setGeneration] = useState<{
+    id: string
+    eventId: string
+    settings: CourseSettings
+  } | null>(
+    preview?.id === '205:45'
+      ? {
+          id: 'preview-generation',
+          eventId: 'lake-market',
+          settings: sampleSettings,
+        }
+      : null,
+  )
+  const [contactReceipt, setContactReceipt] = useState<{
+    email: string
+    isDemo: boolean
+  } | null>(
+    preview?.id === '237:438'
+      ? { email: sampleUser.email, isDemo: true }
+      : null,
+  )
   const [location, setLocation] = useState<Coordinate | null>(null)
   const locationEnabled = useRef(preferences.location)
   const setPreferences = (next: Preferences) => {
@@ -155,6 +213,22 @@ export function useAppState() {
     )
   return {
     ...catalog,
+    preview,
+    setup,
+    setSetup,
+    generation,
+    setGeneration,
+    contactReceipt,
+    setContactReceipt,
+    demoLogin: () => {
+      if (isDemo) setUser(sampleUser)
+    },
+    clearLocalAccount: () => {
+      setUser(null)
+      setCourses([])
+      setDraft(null)
+      setFavorites([])
+    },
     filters,
     setFilters,
     courses,

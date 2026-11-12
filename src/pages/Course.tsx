@@ -13,16 +13,10 @@ import { Calendar } from '@/components/Calendar'
 import { PlaceInformation } from './Events'
 import { useApp } from '@/state/context'
 import { go } from '@/hooks/useRoute'
-import {
-  dateKey,
-  makeDemoCourse,
-  priceText,
-  recalculate,
-  schedule,
-} from '@/domain/planning'
+import { dateKey, priceText, recalculate, schedule } from '@/domain/planning'
 import { safeUrl } from '@/domain/validation'
 import { api, isDemo } from '@/services/api'
-import { courseSnapshot } from '@/domain/snapshots'
+import { calendarDemoEvents, designCourse } from '@/data/scenarios'
 const PlaceMap = lazy(() => import('@/components/PlaceMap'))
 
 function defaultSettings(
@@ -47,16 +41,18 @@ function defaultSettings(
 export function Configure({ event }: { event: Event }) {
   const app = useApp()
   const [settings, setSettings] = useState<CourseSettings>(() =>
-    app.draft?.eventId === event.id
-      ? app.draft.settings
-      : defaultSettings(
-          event,
-          app.filters.date,
-          app.filters.companions[0],
-          app.filters.freeOnly,
-        ),
+    app.setup?.eventId === event.id
+      ? app.setup.settings
+      : app.draft?.eventId === event.id
+        ? app.draft.settings
+        : defaultSettings(
+            event,
+            app.filters.date,
+            app.filters.companions[0],
+            app.filters.freeOnly,
+          ),
   )
-  const [busy, setBusy] = useState(false)
+  const busy = false
   const [error, setError] = useState('')
   const set = <K extends keyof CourseSettings>(
     key: K,
@@ -84,27 +80,11 @@ export function Configure({ event }: { event: Event }) {
       return
     }
     if (!app.data) return
-    setBusy(true)
-    try {
-      const resolved =
-        !isDemo && !settings.originLocation
-          ? { ...settings, originLocation: await api.geocode(settings.origin) }
-          : settings
-      const course = isDemo
-        ? makeDemoCourse(event, app.data, resolved)
-        : await api.generateCourse(event.id, resolved)
-      app.storeDraft(course)
-      go(`/course/${course.id}`)
-    } catch (e) {
-      setError(
-        e instanceof Error
-          ? e.message
-          : '일정을 만들지 못했어요. 다시 시도해 주세요.',
-      )
-    } finally {
-      setBusy(false)
-    }
+    app.setSetup({ eventId: event.id, settings })
+    app.setGeneration({ id: crypto.randomUUID(), eventId: event.id, settings })
+    go(`/generating/${event.id}`)
   }
+
   return (
     <>
       <h1 className="blue">어떤 하루를 보낼까요?</h1>
@@ -210,6 +190,13 @@ export function Configure({ event }: { event: Event }) {
               {app.locating ? '확인 중…' : '⌖ 내 위치'}
             </button>
           </div>
+          <a
+            className="text-button small"
+            href={`#/origin/${event.id}`}
+            onClick={() => app.setSetup({ eventId: event.id, settings })}
+          >
+            출발지 직접 설정하기 →
+          </a>
           <p className="tiny muted">
             주소는 연결된 서버에서 좌표로 확인해요. 시연 모드의 직접 입력 장소는
             지도에 임의 표시하지 않아요.
@@ -335,16 +322,6 @@ export function Configure({ event }: { event: Event }) {
   )
 }
 
-function shareUrl(course: Course): string {
-  const clean = courseSnapshot(course, true)
-  const bytes = new TextEncoder().encode(JSON.stringify(clean))
-  const encoded = btoa(
-    Array.from(bytes, (b) => String.fromCharCode(b)).join(''),
-  )
-  if (encoded.length > 24000)
-    throw new Error('공유할 일정이 너무 길어요. 항목을 줄여 주세요.')
-  return `${window.location.origin}${window.location.pathname}#/shared?data=${encodeURIComponent(encoded)}`
-}
 export function Itinerary({
   course,
   shared = false,
@@ -353,33 +330,26 @@ export function Itinerary({
   shared?: boolean
 }) {
   const app = useApp()
-  const [modal, setModal] = useState<'share' | 'add' | null>(null)
-  const [editing, setEditing] = useState<CourseStop | null>(null)
-  const [manual, setManual] = useState<CourseStop | null>(null)
-  const [error, setError] = useState('')
+  const [adding, setAdding] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [link, setLink] = useState('')
+  const [error, setError] = useState('')
   const [dragged, setDragged] = useState<string | null>(null)
   const items = schedule(course)
-  const price = course.stops.reduce(
-    (total, s) => total + (s.place?.price ?? 0),
-    0,
-  )
-  const unknownPrice = course.stops.some((s) => s.place?.price === null)
+  const cost = course.stops.reduce((n, s) => n + (s.place?.price ?? 0), 0)
+  const unknown = course.stops.some((s) => s.place?.price === null)
   const commit = async (stops: CourseStop[]) => {
     if (!stops.length) {
       setError('일정은 하나 이상 남겨 주세요.')
       return
     }
-    setError('')
     setBusy(true)
+    setError('')
     try {
       const next = { ...course, stops }
       const result =
         isDemo || shared ? recalculate(next) : await api.recalculateCourse(next)
       app.storeDraft(result)
       if (app.courses.some((c) => c.id === result.id)) app.saveCourse(result)
-      go(`/course/${result.id}`)
     } catch (e) {
       setError(
         e instanceof Error ? e.message : '수정 내용을 반영하지 못했어요.',
@@ -389,78 +359,24 @@ export function Itinerary({
     }
   }
   const move = (from: number, to: number) => {
-    if (to < 0 || to >= course.stops.length || from === to) return
+    if (from < 0 || to < 0 || to >= course.stops.length || from === to) return
     const next = [...course.stops]
-    const [item] = next.splice(from, 1)
-    next.splice(to, 0, item)
+    const [stop] = next.splice(from, 1)
+    next.splice(to, 0, stop)
     void commit(next)
   }
-  const replace = (place: Place) => {
-    if (!editing) return
-    void commit(
-      course.stops.map((s) =>
-        s.id === editing.id
-          ? {
-              ...s,
-              title: place.name,
-              place,
-              durationMinutes: place.durationMinutes,
-              missingReason: null,
-            }
-          : s,
-      ),
-    )
-    setEditing(null)
-  }
-  const candidatePool: Place[] = app.data
-    ? [
-        ...app.data.events.filter(
-          (e) =>
-            dateKey(new Date(e.startsAt)) <= course.settings.date &&
-            dateKey(new Date(e.endsAt)) >= course.settings.date,
-        ),
-        ...app.data.places,
-      ]
-    : []
-  const candidates = candidatePool
-    .filter(
-      (p) =>
-        (!editing ||
-          (editing.kind === 'meal'
-            ? p.category === 'food'
-            : editing.place === null ||
-              p.category === editing.place.category)) &&
-        (course.settings.budget !== 0 || p.price === 0) &&
-        !course.stops.some((s) => s.id !== editing?.id && s.place?.id === p.id),
-    )
-    .slice(0, 3)
-  const openShare = () => {
-    setError('')
-    setLink('')
-    setModal('share')
-  }
-  const makeShare = async () => {
-    try {
-      const url = shareUrl(course)
-      setLink(url)
-      if (navigator.clipboard?.writeText) {
-        try {
-          await navigator.clipboard.writeText(url)
-          app.setToast('공유 링크를 복사했어요.')
-        } catch {
-          setError(
-            '자동 복사를 사용할 수 없어요. 아래 공유 링크를 직접 복사해 주세요.',
-          )
-        }
-      }
-    } catch (e) {
-      setError(
-        e instanceof Error
-          ? e.message
-          : '링크를 복사하지 못했어요. 아래 링크를 직접 복사해 주세요.',
-      )
-    }
-  }
+  const candidates: Place[] = [
+    ...(app.data?.places ?? []),
+    ...(app.data?.events.filter(
+      (e) =>
+        dateKey(new Date(e.startsAt)) <= course.settings.date &&
+        dateKey(new Date(e.endsAt)) >= course.settings.date,
+    ) ?? []),
+  ].filter(
+    (p) =>
+      (course.settings.budget !== 0 || p.price === 0) &&
+      !course.stops.some((s) => s.place?.id === p.id),
+  )
   return (
     <>
       <h1 className="blue">추천 하루 일정</h1>
@@ -472,15 +388,9 @@ export function Itinerary({
       <section className="panel tinted">
         <h2 className="h3">✦ {course.name}</h2>
         <p className="small muted">
-          선택한 행사와 주변의 즐길 거리를 한 번에 만나 보세요.
+          선택한 곳 주변의 맛집·볼거리를 시간과 취향에 맞춰 연결했어요.
         </p>
       </section>
-      {course.isDemo && (
-        <p className="info small">
-          시연용 후보로 구성한 일정이에요. 장소·요금·좌표는 실측 데이터가
-          아닙니다.
-        </p>
-      )}
       {items.some((s) => s.overflows) && (
         <p className="warning" role="alert">
           일정이 종료 시간 {course.settings.endTime}을 넘어요. 항목을 줄이거나
@@ -493,7 +403,7 @@ export function Itinerary({
         </p>
       )}
       {busy && (
-        <p role="status" className="info small">
+        <p className="info small" role="status">
           수정한 일정을 다시 계산하고 있어요…
         </p>
       )}
@@ -528,9 +438,6 @@ export function Itinerary({
               ) : (
                 <span className="stop-placeholder">
                   <span className="number-badge">{i + 1}</span>
-                  {stop.place && (
-                    <CategoryIcon category={stop.place.category} size={32} />
-                  )}
                 </span>
               )}
               <div className="grow">
@@ -569,94 +476,105 @@ export function Itinerary({
                 : `${stop.travelMinutes}분 · 직선거리 기반 추정`}
             </p>
             {stop.kind === 'return' && <ReturnDirections course={course} />}
-            {!shared && (
-              <div className="stop-actions">
-                <button
-                  type="button"
-                  disabled={busy || stop.kind === 'return'}
-                  className="text-button"
-                  onClick={() => setEditing(stop)}
-                >
-                  ↻ 교체
-                </button>
-                <button
-                  type="button"
-                  disabled={busy || stop.kind === 'return'}
-                  className="text-button"
-                  onClick={() => setManual(stop)}
-                >
-                  ✎ 직접 입력
-                </button>
-                <div className="row reorder">
-                  <button
-                    type="button"
-                    aria-label={`${stop.title} 위로 이동`}
-                    disabled={busy || i === 0}
-                    onClick={() => move(i, i - 1)}
-                  >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={`${stop.title} 아래로 이동`}
-                    disabled={busy || i === items.length - 1}
-                    onClick={() => move(i, i + 1)}
-                  >
-                    ↓
-                  </button>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    aria-label={`${stop.title} 삭제`}
-                    onClick={() =>
-                      void commit(course.stops.filter((s) => s.id !== stop.id))
+            <div className="stop-actions">
+              {!shared && (
+                <>
+                  <a
+                    className={
+                      stop.kind === 'return'
+                        ? 'disabled-link text-button'
+                        : 'text-button'
+                    }
+                    href={
+                      stop.kind === 'return'
+                        ? undefined
+                        : `#/replace/${course.id}?stop=${encodeURIComponent(stop.id)}`
                     }
                   >
-                    삭제
-                  </button>
-                </div>
-              </div>
-            )}
+                    ↻ 교체
+                  </a>
+                  <a
+                    className={
+                      stop.kind === 'return'
+                        ? 'disabled-link text-button'
+                        : 'text-button'
+                    }
+                    href={
+                      stop.kind === 'return'
+                        ? undefined
+                        : `#/manual/${course.id}?stop=${encodeURIComponent(stop.id)}`
+                    }
+                  >
+                    ✎ 직접 입력
+                  </a>
+                  <div className="row reorder">
+                    <button
+                      type="button"
+                      aria-label={`${stop.title} 위로 이동`}
+                      disabled={busy || i === 0}
+                      onClick={() => move(i, i - 1)}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`${stop.title} 아래로 이동`}
+                      disabled={busy || i === items.length - 1}
+                      onClick={() => move(i, i + 1)}
+                    >
+                      ↓
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`${stop.title} 삭제`}
+                      disabled={busy}
+                      onClick={() =>
+                        void commit(
+                          course.stops.filter((s) => s.id !== stop.id),
+                        )
+                      }
+                    >
+                      삭제
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </article>
         ))}
       </div>
       <section className="panel">
         <div className="row between">
-          <span>예상 합계</span>
+          <span>확인된 요금 합계</span>
           <strong className="blue">
-            {priceText(price)}
-            {unknownPrice ? ' + 미확인 요금' : ''}
+            {priceText(cost)}
+            {unknown ? ' + 미확인 요금' : ''}
           </strong>
         </div>
-        <p className="tiny muted">
-          인원별 요금·교통비는 별도예요. 각 장소의 실제 안내를 확인해 주세요.
-        </p>
+        <p className="tiny muted">미확인 요금·인원별 요금·교통비는 별도예요.</p>
       </section>
       {!shared && (
         <button
           className="secondary"
           type="button"
           disabled={busy}
-          onClick={() => setModal('add')}
+          onClick={() => setAdding(true)}
         >
           + 일정에 장소 추가
         </button>
       )}
-      <a
-        className="secondary"
-        href={`#/course-map/${encodeURIComponent(course.id)}`}
-      >
+      <a className="secondary" href={`#/course-map/${course.id}`}>
         ⌖ 지도에서 동선 확인하기
       </a>
       <p className="tiny muted">
-        점선은 방문 순서예요. 실제 도로 경로가 아니며 이동시간은 직선거리 기반
-        추정입니다.
+        점선은 방문 순서이며 실제 도로 경로가 아닙니다. 이동시간은 직선거리 기반
+        추정이에요.
       </p>
       <div className="sticky-action two">
         {shared ? (
           <button
-            type="button"
             className="secondary"
+            type="button"
             onClick={() => {
               const imported = { ...course, id: crypto.randomUUID() }
               app.storeDraft(imported)
@@ -666,159 +584,49 @@ export function Itinerary({
             내 일정으로 가져오기
           </button>
         ) : (
-          <button
-            type="button"
-            className="secondary"
-            onClick={() =>
-              go(`/configure/${encodeURIComponent(course.eventId)}`)
-            }
-          >
+          <a className="secondary" href={`#/configure/${course.eventId}`}>
             조건 바꾸기
-          </button>
+          </a>
         )}
-        <button type="button" className="primary" onClick={openShare}>
+        <a className="primary" href={`#/share/${course.id}`}>
           저장 · 공유 ↗
-        </button>
+        </a>
       </div>
-      {modal === 'share' && (
-        <Modal title="우리의 하루를 함께" onClose={() => setModal(null)}>
-          <p className="small muted">
-            이 브라우저에 저장하거나 링크로 일정을 공유해 보세요.
-          </p>
-          <button
-            className="primary"
-            type="button"
-            onClick={() => app.saveCourse(course)}
-          >
-            내 코스에 저장
-          </button>
-          <button
-            className="secondary"
-            type="button"
-            onClick={() => void makeShare()}
-          >
-            공유 링크 만들기 · 복사
-          </button>
-          {link && (
-            <label className="field">
-              공유 링크
-              <textarea
-                aria-label="공유 링크"
-                readOnly
-                value={link}
-                rows={3}
-                onFocus={(e) => e.target.select()}
-              />
-            </label>
-          )}
-          <p className="tiny muted">
-            공유 링크에는 출발지와 현재 위치가 포함되지 않아요. 공유 시점의
-            일정이 전달되며 이후 수정은 반영되지 않아요.
-          </p>
-          {error && (
-            <p className="error small" role="alert">
-              {error}
-            </p>
+      {adding && (
+        <Modal title="일정에 장소 추가" onClose={() => setAdding(false)}>
+          {candidates.map((p) => (
+            <button
+              className="candidate"
+              key={p.id}
+              type="button"
+              onClick={() => {
+                const added: CourseStop = {
+                  id: crypto.randomUUID(),
+                  kind: 'custom',
+                  title: p.name,
+                  place: p,
+                  durationMinutes: p.durationMinutes,
+                  travelMinutes: null,
+                  missingReason: null,
+                }
+                void commit([
+                  ...course.stops.slice(0, -1),
+                  added,
+                  ...course.stops.slice(-1),
+                ])
+                setAdding(false)
+              }}
+            >
+              <strong>{p.name}</strong>
+              <small>
+                {priceText(p.price)} · {p.durationMinutes}분
+              </small>
+            </button>
+          ))}
+          {!candidates.length && (
+            <p className="info small">조건에 맞는 추가 후보가 없어요.</p>
           )}
         </Modal>
-      )}
-      {editing && (
-        <Modal title="다른 장소로 바꿔볼까요?" onClose={() => setEditing(null)}>
-          {candidates.length ? (
-            candidates.map((p) => (
-              <button
-                className="candidate"
-                key={p.id}
-                type="button"
-                onClick={() => replace(p)}
-              >
-                <span className="row">
-                  <CategoryIcon category={p.category} />
-                  <strong>{p.name} →</strong>
-                </span>
-                <span className="small blue">
-                  {p.durationMinutes}분 · {priceText(p.price)}
-                </span>
-                <small className="muted">{p.description}</small>
-              </button>
-            ))
-          ) : (
-            <p className="info">
-              같은 조건에 맞는 후보가 없어요. 직접 입력하거나 조건을 변경해
-              주세요.
-            </p>
-          )}
-          <button
-            className="secondary"
-            type="button"
-            onClick={() => {
-              setManual(editing)
-              setEditing(null)
-            }}
-          >
-            장소 직접 입력 →
-          </button>
-        </Modal>
-      )}
-      {modal === 'add' && (
-        <Modal title="일정에 장소 추가" onClose={() => setModal(null)}>
-          {candidatePool
-            .filter(
-              (p) =>
-                (course.settings.budget !== 0 || p.price === 0) &&
-                !course.stops.some((s) => s.place?.id === p.id),
-            )
-            .map((p) => (
-              <button
-                className="candidate"
-                key={p.id}
-                type="button"
-                onClick={() => {
-                  void commit([
-                    ...course.stops.slice(0, -1),
-                    {
-                      id: crypto.randomUUID(),
-                      kind: 'custom',
-                      title: p.name,
-                      place: p,
-                      durationMinutes: p.durationMinutes,
-                      travelMinutes: null,
-                      missingReason: null,
-                    },
-                    ...course.stops.slice(-1),
-                  ])
-                  setModal(null)
-                }}
-              >
-                <strong>{p.name}</strong>
-                <small>
-                  {priceText(p.price)} · {p.durationMinutes}분
-                </small>
-              </button>
-            ))}
-        </Modal>
-      )}
-      {manual && (
-        <ManualPlace
-          stop={manual}
-          onClose={() => setManual(null)}
-          onSave={(place) => {
-            void commit(
-              course.stops.map((s) =>
-                s.id === manual.id
-                  ? {
-                      ...s,
-                      title: place.name,
-                      place,
-                      durationMinutes: place.durationMinutes,
-                      missingReason: null,
-                    }
-                  : s,
-              ),
-            )
-            setManual(null)
-          }}
-        />
       )}
     </>
   )
@@ -855,98 +663,6 @@ function ReturnDirections({ course }: { course: Course }) {
     >
       카카오맵 귀가 길찾기 ↗ · {course.settings.transport}
     </a>
-  )
-}
-function ManualPlace({
-  stop,
-  onSave,
-  onClose,
-}: {
-  stop: CourseStop
-  onSave: (place: Place) => void
-  onClose: () => void
-}) {
-  const [name, setName] = useState(stop.place?.name ?? '')
-  const [address, setAddress] = useState(stop.place?.address ?? '')
-  const [duration, setDuration] = useState(stop.durationMinutes || 45)
-  const [price, setPrice] = useState<number | ''>(stop.place?.price ?? '')
-  return (
-    <Modal title="장소 직접 입력" onClose={onClose}>
-      <form
-        className="form-stack"
-        onSubmit={(e) => {
-          e.preventDefault()
-          onSave({
-            id: crypto.randomUUID(),
-            name: name.trim(),
-            address: address.trim(),
-            description: '사용자가 직접 추가한 장소',
-            category:
-              stop.place?.category ??
-              (stop.kind === 'meal' ? 'food' : 'culture'),
-            district: '',
-            location: null,
-            imageUrl: null,
-            price: price === '' ? null : price,
-            durationMinutes: duration,
-            openingHours: '정보 없음',
-            source: {
-              name: '직접 입력',
-              url: null,
-              updatedAt: new Date().toISOString(),
-              isDemo: false,
-            },
-          })
-        }}
-      >
-        <label className="field">
-          장소 이름
-          <input
-            value={name}
-            required
-            maxLength={100}
-            onChange={(e) => setName(e.target.value)}
-          />
-        </label>
-        <label className="field">
-          주소
-          <input
-            value={address}
-            maxLength={200}
-            onChange={(e) => setAddress(e.target.value)}
-          />
-        </label>
-        <label className="field">
-          머무는 시간 (분)
-          <input
-            type="number"
-            required
-            min="1"
-            max="720"
-            value={duration}
-            onChange={(e) => setDuration(Number(e.target.value))}
-          />
-        </label>
-        <label className="field">
-          요금 (원 · 모르면 비워 두세요)
-          <input
-            type="number"
-            min="0"
-            max="10000000"
-            value={price}
-            onChange={(e) =>
-              setPrice(e.target.value === '' ? '' : Number(e.target.value))
-            }
-          />
-        </label>
-        <p className="tiny muted">
-          직접 입력한 장소는 좌표가 확인되기 전까지 지도에 표시하지 않아요.
-        </p>
-        <button type="submit" className="primary">
-          일정에 반영하기
-        </button>
-      </form>
-    </Modal>
   )
 }
 export function CourseMap({
@@ -1020,47 +736,69 @@ export function CourseMap({
     </>
   )
 }
-export function Saved() {
+export function Saved({ standalone = false }: { standalone?: boolean }) {
   const app = useApp()
-  const [deleteId, setDeleteId] = useState<string | null>(null)
-  const [selectedDate, setSelectedDate] = useState('')
+  const [selectedDate, setSelectedDate] = useState(
+    app.preview && app.courses.length ? '2026-11-14' : '',
+  )
   const courses = app.courses.filter(
     (c) => !selectedDate || c.settings.date === selectedDate,
   )
   return (
     <>
-      <div className="row between">
-        <p className="eyebrow">MY LITTLE TRIPS</p>
-        <a href="#/settings" className="blue small">
-          설정 ···
-        </a>
-      </div>
-      {app.courses.length > 0 && (
-        <Calendar
-          selected={selectedDate}
-          onSelect={setSelectedDate}
-          events={app.data?.events}
-          anchor={app.courses[0].settings.date}
-        />
+      <p
+        className={
+          app.courses.length ? 'saved-eyebrow' : 'eyebrow saved-eyebrow'
+        }
+      >
+        MY LITTLE TRIPS
+      </p>
+      {standalone && <h1 className="blue">다시 꺼내 보는, 나의 하루</h1>}
+      {!standalone && app.courses.length > 0 && (
+        <>
+          <Calendar
+            showRanges
+            selected={selectedDate}
+            onSelect={setSelectedDate}
+            events={app.preview ? calendarDemoEvents : app.data?.events}
+            anchor={app.courses[0].settings.date}
+          />
+          <a className="text-button small align-right" href="#/calendar">
+            월간 행사 캘린더 →
+          </a>
+        </>
       )}
       {!courses.length ? (
         <section className="empty-state saved-empty">
-          <CategoryIcon category="park" size={40} />
-          <h2>
+          <span className="empty-map" aria-hidden="true">
+            🗺
+          </span>
+          <p className="saved-empty-caption">
             {selectedDate
               ? '이 날의 저장된 코스가 없어요'
               : '아직 저장한 코스가 없어요'}
-          </h2>
-          <p className="small muted">
-            마음에 드는 행사에서 우리의 하루를 시작해 보세요.
           </p>
-          <a href="#/" className="primary">
+          <a className="primary" href="#/">
             갈 곳 찾으러 가기 →
           </a>
+          {isDemo && (
+            <button
+              className="secondary"
+              type="button"
+              onClick={() => {
+                const sample = designCourse()
+                app.storeDraft(sample)
+                app.setCourses([sample])
+                app.setToast('시연용 저장 상태입니다.')
+              }}
+            >
+              저장 상태 체험하기
+            </button>
+          )}
           {selectedDate && (
             <button
+              className="text-button"
               type="button"
-              className="secondary"
               onClick={() => setSelectedDate('')}
             >
               모든 코스 보기
@@ -1069,10 +807,10 @@ export function Saved() {
         </section>
       ) : (
         courses.map((c) => (
-          <article className="panel stack" key={c.id}>
-            <p className="eyebrow">
-              저장한 코스 · {c.stops.filter((s) => s.place).length}개 장소
-            </p>
+          <article className="panel stack saved-course-card" key={c.id}>
+            {!standalone && (
+              <p className="eyebrow">저장한 코스 {courses.length}개</p>
+            )}
             {c.stops[0]?.place?.imageUrl && (
               <img
                 className="saved-image"
@@ -1080,69 +818,45 @@ export function Saved() {
                 alt={c.name}
               />
             )}
-            <h2>{c.name}</h2>
+            <div className="row">
+              <CategoryIcon category="park" size={28} />
+              <h2>{c.name}</h2>
+            </div>
             <p className="small muted">
               {c.settings.date} · {c.settings.companion} ·{' '}
-              {c.settings.transport}
+              {c.settings.transport} · {c.stops.filter((s) => s.place).length}개
+              일정
             </p>
-            <a
-              className="primary"
-              href={`#/course/${encodeURIComponent(c.id)}`}
-            >
-              코스 열기 ↗
+            <p className="small blue row">
+              <CategoryIcon category="food" size={20} />
+              {c.stops.find((s) => s.kind === 'meal')?.title ??
+                '식사 계획 미정'}
+            </p>
+            <a className="primary" href={`#/course/${c.id}`}>
+              코스 열기 →
             </a>
-            <button
-              className="text-button danger"
-              type="button"
-              onClick={() => setDeleteId(c.id)}
+            <a
+              className="text-button small muted"
+              href={`#/delete-course/${c.id}`}
             >
-              코스 삭제
-            </button>
+              저장한 코스 삭제
+            </a>
           </article>
         ))
       )}
-      <p className="tiny muted">
-        저장한 코스는 이 브라우저에 보관됩니다. 다른 기기와의 동기화는 아직
-        연결되지 않았어요.
-      </p>
+      <p className="tiny muted">저장한 코스는 이 브라우저에 보관됩니다.</p>
       {app.favorites.length > 0 && (
         <section className="panel stack">
           <h2>관심 행사</h2>
           {app.data?.events
             .filter((e) => app.favorites.includes(e.id))
             .map((e) => (
-              <a
-                className="list-link"
-                key={e.id}
-                href={`#/events/${encodeURIComponent(e.id)}`}
-              >
+              <a className="list-link" key={e.id} href={`#/events/${e.id}`}>
                 {e.name}
                 <span>›</span>
               </a>
             ))}
         </section>
-      )}
-      {deleteId && (
-        <Modal title="이 코스를 삭제할까요?" onClose={() => setDeleteId(null)}>
-          <p className="small muted">이 브라우저에 저장한 코스가 삭제됩니다.</p>
-          <button
-            className="primary danger-fill"
-            type="button"
-            onClick={() => {
-              app.setCourses(app.courses.filter((c) => c.id !== deleteId))
-              setDeleteId(null)
-            }}
-          >
-            삭제하기
-          </button>
-          <button
-            className="secondary"
-            type="button"
-            onClick={() => setDeleteId(null)}
-          >
-            취소
-          </button>
-        </Modal>
       )}
     </>
   )

@@ -291,65 +291,74 @@ export function Detail({ event }: { event: Event }) {
   )
 }
 export function Sources({ event }: { event: Event }) {
+  const sources = event.sources.length ? event.sources : [event.source]
+  const primary = sources.find((s) => safeUrl(s.url))
+  const url = primary
+    ? safeUrl(primary.url)
+    : event.source.isDemo
+      ? 'https://www.yicf.or.kr/'
+      : undefined
   return (
     <>
       <h1 className="blue">신청 전에 확인해 주세요</h1>
-      <p className="small muted">
-        행사 정보는 각 출처의 안내를 확인해 주세요. 신청은 원문 채널에서
-        진행합니다.
-      </p>
-      {event.notice && <p className="warning">{event.notice}</p>}
-      {event.conflicts.map((conflict, index) => (
-        <section className="panel stack" key={`${conflict.field}-${index}`}>
-          <h2>{conflict.field} 안내 차이</h2>
-          {conflict.entries.map((e, i) => (
-            <div key={i}>
-              <strong className="small">{e.sourceName}</strong>
-              <p className="small muted">{e.value}</p>
-              {safeUrl(e.url) && (
-                <a
-                  href={safeUrl(e.url)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="blue small"
-                >
-                  원문 확인 ↗
-                </a>
-              )}
-            </div>
-          ))}
-        </section>
-      ))}
-      {(event.sources.length ? event.sources : [event.source]).map(
-        (source, i) => (
-          <section key={i} className="panel stack">
-            <h2>{source.name}</h2>
-            <p className="small muted">
-              갱신:{' '}
-              {new Date(source.updatedAt).toLocaleString('ko-KR', {
+      <div className="source-channel">
+        {url ? (
+          <a
+            className="primary"
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {primary?.name ?? '용인문화재단 홈페이지'} ↗
+          </a>
+        ) : (
+          <p className="info small">신청·원문 링크 정보 없음</p>
+        )}
+        <button
+          className="secondary"
+          type="button"
+          onClick={() => {
+            if (Number(history.state?.yonginDepth) > 0) history.back()
+            else go(`/events/${event.id}`)
+          }}
+        >
+          이전 화면으로 돌아가기
+        </button>
+      </div>
+      {event.source.isDemo && (
+        <p className="tiny muted">
+          기관 홈페이지는 시연용 참고 링크입니다. 가상 행사에 대한 실제
+          신청·출처 페이지가 아닙니다.
+        </p>
+      )}
+      {event.conflicts.length > 0 && (
+        <a className="text-button small" href={`#/differences/${event.id}`}>
+          출처별 안내 차이 확인 →
+        </a>
+      )}
+      <details className="source-details">
+        <summary>출처와 갱신 시각</summary>
+        {sources.map((s, i) => (
+          <div className="panel stack" key={i}>
+            <strong className="small">{s.name}</strong>
+            <p className="tiny muted">
+              {new Date(s.updatedAt).toLocaleString('ko-KR', {
                 timeZone: 'Asia/Seoul',
               })}
             </p>
-            {source.isDemo && (
-              <p className="warning small">
-                시연용 행사 정보예요. 실제 운영 정보와 다를 수 있어요.
-              </p>
-            )}
-            {safeUrl(source.url) ? (
+            {safeUrl(s.url) && (
               <a
-                href={safeUrl(source.url)}
+                className="small blue"
+                href={safeUrl(s.url)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="primary"
               >
-                원문 페이지 열기 ↗
+                원문 확인 ↗
               </a>
-            ) : (
-              <p className="small muted">원문 링크 정보 없음</p>
             )}
-          </section>
-        ),
-      )}
+          </div>
+        ))}
+      </details>
       {safeUrl(event.applicationUrl) && (
         <a
           className="primary"

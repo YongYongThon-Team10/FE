@@ -16,11 +16,15 @@ export function useStorage<T>(
   fallback: T,
   validate: (value: unknown) => T,
   serialize: (value: T) => unknown = (value) => value,
+  persistent = true,
 ) {
-  const [value, setValue] = useState(() => readStorage(key, fallback, validate))
+  const [value, setValue] = useState(() =>
+    persistent ? readStorage(key, fallback, validate) : fallback,
+  )
   const [storageError, setStorageError] = useState('')
   const update = (next: T) => {
     setValue(next)
+    if (!persistent) return true
     try {
       localStorage.setItem(key, JSON.stringify(serialize(next)))
       setStorageError('')

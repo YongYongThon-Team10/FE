@@ -44,7 +44,7 @@ test('게스트가 검색부터 지도·코스 편집·저장까지 하나의 �
   await page
     .locator('.stop-card')
     .nth(2)
-    .getByRole('button', { name: '교체' })
+    .getByRole('link', { name: '교체' })
     .click()
   await page.getByRole('button', { name: /물빛 국수집/ }).click()
   await expect(page.locator('.stop-card').nth(2)).toContainText('물빛 국수집')
@@ -60,13 +60,16 @@ test('게스트가 검색부터 지도·코스 편집·저장까지 하나의 �
   await page.getByRole('button', { name: '뒤로 가기' }).click()
   await expect(page.locator('.stop-card').nth(1)).toContainText('물빛 국수집')
 
-  await page.getByRole('button', { name: '저장 · 공유' }).click()
+  await page.getByRole('link', { name: '저장 · 공유' }).click()
   await page.getByRole('button', { name: '내 코스에 저장' }).click()
   await page.getByRole('button', { name: '공유 링크 만들기' }).click()
   await expect(page.getByLabel('공유 링크', { exact: true })).toHaveValue(
     /#\/shared\?data=/,
   )
-  await page.getByRole('button', { name: '닫기', exact: true }).click()
+  await page
+    .getByRole('navigation')
+    .getByRole('link', { name: '내 코스' })
+    .click()
   await page
     .getByRole('navigation')
     .getByRole('link', { name: '내 코스' })

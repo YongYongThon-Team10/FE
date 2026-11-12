@@ -47,7 +47,7 @@ export function EventBadges({ event }: { event: Event }) {
         <button
           type="button"
           className="notice-badge"
-          onClick={() => go(`/sources/${encodeURIComponent(event.id)}`)}
+          onClick={() => go(`/differences/${encodeURIComponent(event.id)}`)}
         >
           안내 상이 ⓘ
         </button>

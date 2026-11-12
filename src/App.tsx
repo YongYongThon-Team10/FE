@@ -20,7 +20,27 @@ import {
 import { go, useRoute } from '@/hooks/useRoute'
 import { parseCourse } from '@/domain/validation'
 import { isDemo } from '@/services/api'
+import { findDesignFrame } from '@/data/designFrames'
+import { MonthCalendar } from '@/components/MonthCalendar'
+import { DesignReview } from '@/pages/DesignReview'
+import { Facilities } from '@/pages/Facilities'
+import {
+  SearchConditions,
+  Generating,
+  Origin,
+  ReplacePlace,
+  ManualEntry,
+  SaveShare,
+  DeleteCourse,
+  Help,
+  Onboarding,
+  LogoutComplete,
+  ContactComplete,
+  Differences,
+} from '@/pages/Workflows'
 import './App.css'
+import './workflows.css'
+import './facilities.css'
 
 function Missing({
   message = '요청한 화면을 찾을 수 없어요.',
@@ -70,6 +90,7 @@ function Shell() {
   const route = rawRoute.split('?')[0]
   const parts = route.split('/').filter(Boolean)
   const section = parts[0] ?? 'home'
+  const query = new URLSearchParams(rawRoute.split('?')[1])
   let id = ''
   try {
     id = decodeURIComponent(parts[1] ?? '')
@@ -110,7 +131,7 @@ function Shell() {
     notifications: '알림 설정',
     privacy: '개인정보 관리',
     account: '로그인 정보',
-    notices: '공지사항',
+    notices: id ? '공지사항 상세' : '공지사항',
     contact: '문의하기',
     guide: '이용 가이드',
     shared: '함께하는 하루',
@@ -118,11 +139,31 @@ function Shell() {
     register: '회원가입',
     'reset-password': '비밀번호 찾기',
     onboarding: '용인 나들이',
+    splash: '용인 나들이',
+    conditions: '검색 조건',
+    generating: '하루 연결하기',
+    replace: '다른 먹거리 추천',
+    manual: '식사 계획 입력',
+    share: '저장 · 공유',
+    'saved-courses': '내 코스',
+    differences: '안내 차이 확인',
+    origin: '출발지 설정',
+    'delete-course': '코스 삭제',
+    help: '이럴 땐 이렇게',
+    calendar: '행사 캘린더',
+    'contact-complete': '문의 접수 완료',
+    'logout-complete': '로그인 안내',
+    'design-review': 'Figma 전체 화면',
+    facilities: '기흥 여가지도',
   }
   const title = titles[section] ?? '용인 나들이'
-  const auth = ['login', 'register', 'reset-password', 'onboarding'].includes(
-    section,
-  )
+  const auth = [
+    'login',
+    'register',
+    'reset-password',
+    'onboarding',
+    'splash',
+  ].includes(section)
   const settingsArea = [
     'saved',
     'settings',
@@ -131,6 +172,10 @@ function Shell() {
     'account',
     'notices',
     'contact',
+    'calendar',
+    'contact-complete',
+    'logout-complete',
+    'delete-course',
   ].includes(section)
   const action =
     ['configure', 'course', 'shared'].includes(section) ||
@@ -142,6 +187,56 @@ function Shell() {
   }, [rawRoute, title])
   let content: ReactNode
   switch (section) {
+    case 'conditions':
+      content = <SearchConditions />
+      break
+    case 'generating':
+      content = <Generating eventId={id} />
+      break
+    case 'origin':
+      content = <Origin eventId={id} />
+      break
+    case 'replace':
+      content = course ? (
+        <ReplacePlace course={course} stopId={query.get('stop') ?? ''} />
+      ) : (
+        <Missing />
+      )
+      break
+    case 'manual':
+      content = course ? (
+        <ManualEntry course={course} stopId={query.get('stop') ?? ''} />
+      ) : (
+        <Missing />
+      )
+      break
+    case 'share':
+      content = course ? <SaveShare course={course} /> : <Missing />
+      break
+    case 'delete-course':
+      content = course ? <DeleteCourse course={course} /> : <Missing />
+      break
+    case 'saved-courses':
+      content = <Saved standalone />
+      break
+    case 'differences':
+      content = <Differences eventId={id} />
+      break
+    case 'calendar':
+      content = <MonthCalendar />
+      break
+    case 'help':
+      content = <Help />
+      break
+    case 'contact-complete':
+      content = <ContactComplete />
+      break
+    case 'logout-complete':
+      content = <LogoutComplete />
+      break
+    case 'design-review':
+      content = <DesignReview />
+      break
     case 'home':
       content = <Home />
       break
@@ -227,20 +322,10 @@ function Shell() {
       content = <Login key="reset" mode="reset" />
       break
     case 'onboarding':
-      content = (
-        <section className="onboarding">
-          <Brand large />
-          <h1>오늘, 용인 어디 갈까?</h1>
-          <p className="small muted">가까운 곳에서 발견하는 즐거움</p>
-          <button
-            type="button"
-            className="primary"
-            onClick={() => go('/login')}
-          >
-            시작하기 →
-          </button>
-        </section>
-      )
+      content = <Onboarding />
+      break
+    case 'splash':
+      content = <Onboarding splash />
       break
     default:
       content = <Missing />
@@ -252,11 +337,46 @@ function Shell() {
     'sources',
     'configure',
     'event-map',
+    'conditions',
+    'generating',
+    'origin',
+    'replace',
+    'manual',
+    'differences',
+    'calendar',
   ].includes(section)
+  if (section === 'facilities')
+    return (
+      <div className="app-shell facility-shell">
+        {app.preview && (
+          <div className="preview-control">
+            <a href="#/design-review">← 50개 프레임 목록</a>
+            <span>{app.preview.id}</span>
+          </div>
+        )}
+        <Facilities
+          key={`${parts[2] ?? 'home'}-${query.get('q') ?? ''}`}
+          path={route}
+          query={query}
+        />
+      </div>
+    )
   return (
     <div
-      className={`app-shell ${settingsArea ? 'gradient-shell' : ''} ${section === 'guide' ? 'guide-shell' : ''} ${auth ? 'auth-shell' : ''}`}
+      className={`app-shell screen-${section} ${settingsArea || section === 'generating' ? 'gradient-shell' : ''} ${section === 'guide' || section === 'help' ? 'guide-shell' : ''} ${auth ? 'auth-shell' : ''} ${app.preview ? 'frame-preview' : ''} ${section === 'saved' ? 'saved-shell' : ''}`}
     >
+      {app.preview && (
+        <>
+          <div className="preview-control">
+            <a href="#/design-review">← 50개 프레임 목록</a>
+            <span>{app.preview.id}</span>
+          </div>
+          <div className="preview-status">
+            <strong>9:41</strong>
+            <img src="/figma/preview-status.svg" alt="" />
+          </div>
+        </>
+      )}
       <a
         className="skip-link"
         href="#main-content"
@@ -269,23 +389,45 @@ function Shell() {
       </a>
       {!auth && section !== 'home' && (
         <header
-          className={`app-header ${settingsArea ? 'settings-header' : ''}`}
+          className={`app-header ${settingsArea ? 'settings-header' : ''} ${['conditions', 'course', 'course-map', 'replace', 'manual', 'share', 'saved-courses', 'differences', 'origin', 'sources', 'generating'].includes(section) ? 'compact-header' : ''} ${['guide', 'help', 'saved'].includes(section) ? 'profile-header' : ''}`}
         >
-          <button
-            type="button"
-            className="icon-button back"
-            aria-label="뒤로 가기"
-            onClick={() => {
-              if (Number(window.history.state?.yonginDepth) > 0)
-                window.history.back()
-              else go('/')
-            }}
-          >
-            ‹
-          </button>
-          <span>{title}</span>
+          {['guide', 'help', 'saved'].includes(section) ? (
+            <span className="profile-header-title">
+              {section === 'saved' ? (
+                <>
+                  <img src="/figma/current-saved-empty-imgGroup8.svg" alt="" />
+                  {app.user?.name ?? '게스트'}
+                </>
+              ) : (
+                title
+              )}
+            </span>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="icon-button back"
+                aria-label="뒤로 가기"
+                onClick={() => {
+                  if (Number(window.history.state?.yonginDepth) > 0)
+                    window.history.back()
+                  else go('/')
+                }}
+              >
+                <img src="/figma/ui-back.svg" alt="" />
+              </button>
+              <span>{title}</span>
+            </>
+          )}
           <a className="icon-button" href="#/settings" aria-label="설정">
-            ···
+            <img
+              src={
+                section === 'saved'
+                  ? '/figma/current-saved-empty-imgGroup9.svg'
+                  : '/figma/ui-dots.svg'
+              }
+              alt=""
+            />
           </a>
         </header>
       )}
@@ -355,10 +497,23 @@ function Shell() {
                 '/',
                 'search',
                 '행사 찾기',
-                !settingsArea && section !== 'guide',
+                !settingsArea &&
+                  section !== 'saved-courses' &&
+                  section !== 'guide' &&
+                  section !== 'help',
               ],
-              ['/saved', 'heart', '내 코스', settingsArea],
-              ['/guide', 'flow', '화면 흐름', section === 'guide'],
+              [
+                '/saved',
+                'heart',
+                '내 코스',
+                settingsArea || section === 'saved-courses',
+              ],
+              [
+                '/guide',
+                'flow',
+                '화면 흐름',
+                section === 'guide' || section === 'help',
+              ],
             ] as const
           ).map(([path, icon, label, active]) => (
             <a
@@ -373,6 +528,11 @@ function Shell() {
           ))}
         </nav>
       )}
+      {app.preview && (
+        <div className="preview-home-indicator">
+          <span />
+        </div>
+      )}
       {app.toast && (
         <div role="status" className="toast">
           {app.toast}
@@ -382,9 +542,13 @@ function Shell() {
   )
 }
 export default function App() {
+  const route = useRoute()
+  const frame = isDemo
+    ? findDesignFrame(new URLSearchParams(route.split('?')[1]).get('frame'))
+    : undefined
   return (
     <AppErrorBoundary>
-      <AppProvider>
+      <AppProvider key={frame?.id ?? 'live'} previewId={frame?.id}>
         <Shell />
       </AppProvider>
     </AppErrorBoundary>
