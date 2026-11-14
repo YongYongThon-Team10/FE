@@ -97,3 +97,130 @@ test('빠른 재검색에서 취소된 응답은 최신 결과를 덮어쓰지 �
   release?.()
   await expect(page.locator('.live-place-card')).not.toContainText('느린검색')
 })
+
+test('실제 장소 선택 → 주변 음식점·카페 → 코스 편집·동선·저장·새로고침', async ({
+  page,
+}) => {
+  await page.clock.setFixedTime(new Date('2026-11-14T12:00:00+09:00'))
+  await page.route('**/api/places?*', (route) =>
+    route.fulfill({ json: result('선택장소') }),
+  )
+  await page.route('**/api/nearby?*', (route) => {
+    const u = new URL(route.request().url())
+    expect(u.searchParams.get('lat')).toBe('37.25')
+    expect(u.searchParams.get('lng')).toBe('127.11')
+    const food = u.searchParams.get('category') === 'FD6'
+    return route.fulfill({
+      json: {
+        ...result('근처'),
+        places: food
+          ? [
+              {
+                ...place('201', '실제 음식점 A'),
+                categoryGroup: 'FD6',
+                distanceMeters: 100,
+              },
+              {
+                ...place('202', '실제 음식점 B'),
+                categoryGroup: 'FD6',
+                location: { lat: 37.251, lng: 127.112 },
+                distanceMeters: 200,
+              },
+            ]
+          : [
+              {
+                ...place('301', '실제 카페 C'),
+                categoryGroup: 'CE7',
+                location: { lat: 37.252, lng: 127.113 },
+                distanceMeters: 300,
+              },
+            ],
+      },
+    })
+  })
+  await page.goto('/#/places?q=선택장소')
+  await page.getByRole('button', { name: /로 하루 코스 만들기/ }).click()
+  await expect(
+    page.getByRole('heading', { name: '실제 장소로 하루를 연결해요' }),
+  ).toBeVisible()
+  await page.reload()
+  await expect(page.getByLabel('주변 음식점 선택')).toBeVisible()
+  await page.getByLabel('주변 음식점 선택').selectOption('202')
+  await page.getByLabel('선택 장소 체류 시간(분)').fill('180')
+  await page.getByLabel('종료 시간').fill('12:00')
+  await page
+    .getByRole('button', { name: '이 장소들로 하루 코스 만들기' })
+    .click()
+  await expect(page.locator('.stop-card')).toHaveCount(3)
+  await expect(page.getByRole('alert')).toContainText('종료 시간')
+  await expect(page.locator('.stop-card').nth(1)).toContainText('실제 음식점 B')
+  await expect(page.locator('.stop-card').nth(2)).toContainText('실제 카페 C')
+  await expect(page.locator('body')).not.toContainText('시연 데이터')
+  await page.getByRole('button', { name: '실제 카페 C 위로 이동' }).click()
+  await expect(page.locator('.stop-card').nth(1)).toContainText('실제 카페 C')
+  await page.getByLabel('실제 카페 C 체류 시간(분)').fill('90')
+  await page.getByLabel('실제 카페 C 체류 시간(분)').press('Tab')
+  await expect(page.locator('.stop-card').nth(1)).toContainText('90분')
+  await page.getByRole('link', { name: '지도에서 동선 확인하기' }).click()
+  await expect(page.locator('.leaflet-marker-icon')).toHaveCount(3)
+  await expect(page.getByRole('link', { name: /카카오맵 길찾기/ })).toHaveCount(
+    2,
+  )
+  await expect(
+    page.getByRole('link', { name: /카카오맵 길찾기/ }).first(),
+  ).toHaveAttribute('href', /\/link\/by\/walk\//)
+  await page
+    .locator('.place-list-item')
+    .filter({ hasText: '실제 카페 C' })
+    .click()
+  await expect(page.locator('.place-information')).toContainText('실제 카페 C')
+  await page.getByRole('button', { name: '뒤로 가기' }).click()
+  await page.getByRole('link', { name: '저장 · 공유' }).click()
+  await page.getByRole('button', { name: '내 코스에 저장' }).click()
+  await page.getByRole('link', { name: '저장한 코스 열기' }).click()
+  await page.reload()
+  await page.getByRole('link', { name: '코스 열기' }).click()
+  await expect(page.locator('.stop-card')).toHaveCount(3)
+  await expect(page.locator('.stop-card').nth(1)).toContainText('실제 카페 C')
+  await expect(page.locator('.stop-card').nth(1)).toContainText('90분')
+  const saved = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('yongin.courses.v1')!),
+  )
+  expect(saved[0].isDemo).toBe(false)
+  expect(
+    saved[0].stops.every(
+      (stop: { place: { source: { isDemo: boolean } } }) =>
+        !stop.place.source.isDemo,
+    ),
+  ).toBe(true)
+  await expect(page.locator('body')).not.toContainText('시연 데이터')
+})
+test('주변 추천 실패는 생성을 막고, 실제 빈 후보는 가짜 장소 없이 단일 코스로 저장한다', async ({
+  page,
+}) => {
+  let fail = true
+  await page.route('**/api/places?*', (route) =>
+    route.fulfill({ json: result('선택장소') }),
+  )
+  await page.route('**/api/nearby?*', (route) =>
+    fail
+      ? route.fulfill({ status: 502, json: { error: '주변 연결 실패' } })
+      : route.fulfill({ json: result('근처', 1, true) }),
+  )
+  await page.goto('/#/places?q=선택장소')
+  await page.getByRole('button', { name: /로 하루 코스 만들기/ }).click()
+  await expect(page.getByRole('alert')).toHaveCount(2)
+  await expect(
+    page.getByRole('button', { name: '이 장소들로 하루 코스 만들기' }),
+  ).toBeDisabled()
+  fail = false
+  await page.getByRole('button', { name: '주변 추천 다시 불러오기' }).click()
+  await expect(
+    page.getByText('반경 안에 확인된 후보가 없어요.', { exact: false }),
+  ).toHaveCount(2)
+  await page
+    .getByRole('button', { name: '이 장소들로 하루 코스 만들기' })
+    .click()
+  await expect(page.locator('.stop-card')).toHaveCount(1)
+  await expect(page.locator('body')).not.toContainText('시연 데이터')
+})

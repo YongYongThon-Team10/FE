@@ -6,6 +6,8 @@ import { PageContainer } from '@/components/PageContainer'
 import { NavIcon, Brand } from '@/components/Brand'
 import { Home } from '@/pages/Home'
 import { Places } from '@/pages/Places'
+import { RealCoursePlan } from '@/pages/RealCoursePlan'
+import { isRealCourse } from '@/domain/realCourse'
 import { livePlaces } from '@/services/places'
 import { Detail, Events, Sources } from '@/pages/Events'
 import { Configure, CourseMap, Itinerary, Saved } from '@/pages/Course'
@@ -122,6 +124,7 @@ function Shell() {
   const titles: Record<string, string> = {
     home: '용인 나들이',
     places: '장소 찾기',
+    plan: '하루 코스 만들기',
     events: id ? '행사 상세' : '행사 찾기',
     map: '행사 지도',
     sources: '신청·출처 안내',
@@ -260,6 +263,14 @@ function Shell() {
       )
       break
     }
+    case 'plan':
+      content =
+        course && isRealCourse(course) ? (
+          <RealCoursePlan key={course.id} course={course} />
+        ) : (
+          <Missing message="코스를 만들 실제 장소를 먼저 선택해 주세요." />
+        )
+      break
     case 'events':
       content = id ? (
         event ? (
@@ -498,7 +509,16 @@ function Shell() {
           {!auth && (
             <footer className="data-footer">
               {livePlaces &&
-              (['home', 'places', 'map'].includes(section) ||
+              ([
+                'home',
+                'places',
+                'map',
+                'plan',
+                'saved',
+                'saved-courses',
+              ].includes(section) ||
+                (course && isRealCourse(course)) ||
+                (shared && isRealCourse(shared)) ||
                 (section === 'events' && !id))
                 ? '실제 장소 정보 · 카카오맵 제공 · 운영 정보는 상세 페이지에서 확인해 주세요.'
                 : isDemo

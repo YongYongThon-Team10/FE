@@ -10,6 +10,7 @@ export type SearchPlace = {
   address: string
   roadAddress: string
   phone: string
+  distanceMeters?: number | null
   location: { lat: number; lng: number }
   url: string
 }
@@ -29,7 +30,28 @@ export async function searchPlaces(
   signal: AbortSignal,
 ): Promise<PlaceResults> {
   const params = new URLSearchParams({ q: query, page: String(page) })
-  const response = await fetch(`${placesApiBase}/places?${params}`, { signal })
+  return requestPlaces(`places?${params}`, signal)
+}
+export async function nearbyPlaces(
+  lat: number,
+  lng: number,
+  category: 'FD6' | 'CE7',
+  radius: number,
+  signal: AbortSignal,
+): Promise<PlaceResults> {
+  const params = new URLSearchParams({
+    lat: String(lat),
+    lng: String(lng),
+    category,
+    radius: String(radius),
+  })
+  return requestPlaces(`nearby?${params}`, signal)
+}
+async function requestPlaces(
+  path: string,
+  signal: AbortSignal,
+): Promise<PlaceResults> {
+  const response = await fetch(`${placesApiBase}/${path}`, { signal })
   const value = await response.json().catch(() => null)
   if (!response.ok)
     throw new Error(

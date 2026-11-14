@@ -2,11 +2,14 @@ import { useState } from 'react'
 import { dateKey } from '@/domain/planning'
 import { useApp } from '@/state/context'
 import { calendarDemoEvents } from '@/data/scenarios'
+import { livePlaces } from '@/services/places'
 export function MonthCalendar() {
   const app = useApp()
   const calendarEvents = app.preview
     ? calendarDemoEvents
-    : (app.data?.events ?? [])
+    : livePlaces
+      ? []
+      : (app.data?.events ?? [])
   const initial = app.courses[0]?.settings.date ?? dateKey()
   const [month, setMonth] = useState(initial.slice(0, 7))
   const [selected, setSelected] = useState(initial)

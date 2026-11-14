@@ -4,6 +4,8 @@ import { go } from '@/hooks/useRoute'
 import { searchPlaces } from '@/services/places'
 import type { PlaceResults, SearchPlace } from '@/services/places'
 import type { Category, Place } from '@/domain/models'
+import { createRealCourse } from '@/domain/realCourse'
+import { useApp } from '@/state/context'
 const PlaceMap = lazy(() => import('@/components/PlaceMap'))
 const category = (place: SearchPlace): Category =>
   (
@@ -37,6 +39,7 @@ function mapPlace(place: SearchPlace, fetchedAt: string): Place {
   }
 }
 function PlaceCard({ place }: { place: SearchPlace }) {
+  const app = useApp()
   return (
     <article className="panel live-place-card">
       <div className="row">
@@ -70,6 +73,18 @@ function PlaceCard({ place }: { place: SearchPlace }) {
       >
         카카오맵 상세·운영 정보 확인 ↗
       </a>
+      <button
+        type="button"
+        className="primary small"
+        aria-label={`${place.name}로 하루 코스 만들기`}
+        onClick={() => {
+          const course = createRealCourse(place)
+          app.storeDraft(course)
+          go(`/plan/${course.id}`)
+        }}
+      >
+        이 장소로 하루 코스 만들기 →
+      </button>
     </article>
   )
 }

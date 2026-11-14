@@ -14,7 +14,32 @@ export async function searchPlaces(request, env, fetcher = fetch) {
   if (request.method !== 'GET')
     return json({ error: 'GET 요청만 지원합니다.' }, 405, { Allow: 'GET' })
   const params = new URL(request.url).searchParams
-  const q = (params.get('q') ?? '').trim()
+  const nearby = new URL(request.url).pathname === '/api/nearby'
+  const group = params.get('category')
+  const lat = Number(params.get('lat'))
+  const lng = Number(params.get('lng'))
+  const radius = Number(params.get('radius') ?? 1000)
+  if (
+    nearby &&
+    (!['FD6', 'CE7'].includes(group) ||
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lng) ||
+      lat < 37.08 ||
+      lat > 37.42 ||
+      lng < 127 ||
+      lng > 127.45 ||
+      !Number.isInteger(radius) ||
+      radius < 500 ||
+      radius > 5000)
+  )
+    return json(
+      {
+        error:
+          '용인시의 기준 좌표와 500~5000m 반경, 음식점 또는 카페를 선택해 주세요.',
+      },
+      400,
+    )
+  const q = nearby ? group : (params.get('q') ?? '').trim()
   const page = Number(params.get('page') ?? 1)
   if (
     !q ||
@@ -51,9 +76,18 @@ export async function searchPlaces(request, env, fetcher = fetch) {
       : { start: now, count: 1 },
   )
   const upstream = new URL(
-    'https://dapi.kakao.com/v2/local/search/keyword.json',
+    nearby
+      ? 'https://dapi.kakao.com/v2/local/search/category.json'
+      : 'https://dapi.kakao.com/v2/local/search/keyword.json',
   )
-  upstream.searchParams.set('query', q.includes('용인') ? q : `용인 ${q}`)
+  if (nearby) {
+    upstream.searchParams.set('category_group_code', group)
+    upstream.searchParams.set('x', String(lng))
+    upstream.searchParams.set('y', String(lat))
+    upstream.searchParams.set('radius', String(radius))
+    upstream.searchParams.set('sort', 'distance')
+  } else
+    upstream.searchParams.set('query', q.includes('용인') ? q : `용인 ${q}`)
   upstream.searchParams.set('page', String(page))
   upstream.searchParams.set('size', '15')
   upstream.searchParams.set('rect', '127.00,37.08,127.45,37.42')
@@ -84,6 +118,7 @@ export async function searchPlaces(request, env, fetcher = fetch) {
         (p) =>
           typeof p.id === 'string' &&
           typeof p.place_name === 'string' &&
+          (!nearby || p.category_group_code === group) &&
           /^(?:경기|경기도) 용인시/.test(p.address_name ?? '') &&
           Number.isFinite(Number(p.y)) &&
           Number.isFinite(Number(p.x)) &&
@@ -98,6 +133,10 @@ export async function searchPlaces(request, env, fetcher = fetch) {
         address: p.address_name ?? '',
         roadAddress: p.road_address_name ?? '',
         phone: p.phone ?? '',
+        distanceMeters:
+          p.distance !== '' && Number.isFinite(Number(p.distance))
+            ? Number(p.distance)
+            : null,
         location: { lat: Number(p.y), lng: Number(p.x) },
         url: `https://place.map.kakao.com/${encodeURIComponent(p.id)}`,
       }))

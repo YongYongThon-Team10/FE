@@ -17,6 +17,8 @@ import { dateKey, priceText, recalculate, schedule } from '@/domain/planning'
 import { safeUrl } from '@/domain/validation'
 import { api, isDemo } from '@/services/api'
 import { calendarDemoEvents, designCourse } from '@/data/scenarios'
+import { isRealCourse } from '@/domain/realCourse'
+import { livePlaces } from '@/services/places'
 const PlaceMap = lazy(() => import('@/components/PlaceMap'))
 
 function defaultSettings(
@@ -335,6 +337,7 @@ export function Itinerary({
   const [error, setError] = useState('')
   const [dragged, setDragged] = useState<string | null>(null)
   const items = schedule(course)
+  const real = isRealCourse(course)
   const cost = course.stops.reduce((n, s) => n + (s.place?.price ?? 0), 0)
   const unknown = course.stops.some((s) => s.place?.price === null)
   const commit = async (stops: CourseStop[]) => {
@@ -347,7 +350,9 @@ export function Itinerary({
     try {
       const next = { ...course, stops }
       const result =
-        isDemo || shared ? recalculate(next) : await api.recalculateCourse(next)
+        real || isDemo || shared
+          ? recalculate(next)
+          : await api.recalculateCourse(next)
       app.storeDraft(result)
       if (app.courses.some((c) => c.id === result.id)) app.saveCourse(result)
     } catch (e) {
@@ -388,7 +393,9 @@ export function Itinerary({
       <section className="panel tinted">
         <h2 className="h3">✦ {course.name}</h2>
         <p className="small muted">
-          선택한 곳 주변의 맛집·볼거리를 시간과 취향에 맞춰 연결했어요.
+          {real
+            ? '선택한 실제 장소와 주변 음식점·카페를 연결했어요. 체류 시간은 수정 가능한 계획이며 영업 시간·요금은 방문 전 확인해 주세요.'
+            : '선택한 곳 주변의 맛집·볼거리를 시간과 취향에 맞춰 연결했어요.'}
         </p>
       </section>
       {items.some((s) => s.overflows) && (
@@ -448,10 +455,10 @@ export function Itinerary({
                   ·{' '}
                   {
                     {
-                      arrival: '행사 도착',
+                      arrival: real ? '방문 장소' : '행사 도착',
                       program: '프로그램',
                       meal: '먹거리',
-                      nearby: '근처 행사',
+                      nearby: real ? '카페·주변 장소' : '근처 행사',
                       return: '귀가',
                       custom: '직접 입력',
                     }[stop.kind]
@@ -468,6 +475,48 @@ export function Itinerary({
                 <span>{priceText(stop.place.price)}</span>
                 <span>{stop.durationMinutes}분</span>
               </div>
+            )}
+            {real && stop.place && (
+              <a
+                className="small blue"
+                href={safeUrl(stop.place.source.url)}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                주소·영업 정보 확인 ↗
+              </a>
+            )}
+            {real && !shared && (
+              <label className="field small">
+                {stop.title} 체류 시간(분)
+                <input
+                  type="number"
+                  min={15}
+                  max={480}
+                  defaultValue={stop.durationMinutes}
+                  key={`${stop.id}-${stop.durationMinutes}`}
+                  onBlur={(event) => {
+                    const duration = Number(event.target.value)
+                    if (
+                      !Number.isInteger(duration) ||
+                      duration < 15 ||
+                      duration > 480
+                    ) {
+                      setError('체류 시간은 15~480분으로 입력해 주세요.')
+                      event.target.value = String(stop.durationMinutes)
+                      return
+                    }
+                    if (duration !== stop.durationMinutes)
+                      void commit(
+                        course.stops.map((item) =>
+                          item.id === stop.id
+                            ? { ...item, durationMinutes: duration }
+                            : item,
+                        ),
+                      )
+                  }}
+                />
+              </label>
             )}
             <p className="tiny muted">
               이동{' '}
@@ -488,25 +537,29 @@ export function Itinerary({
                     href={
                       stop.kind === 'return'
                         ? undefined
-                        : `#/replace/${course.id}?stop=${encodeURIComponent(stop.id)}`
+                        : real
+                          ? `#/plan/${course.id}`
+                          : `#/replace/${course.id}?stop=${encodeURIComponent(stop.id)}`
                     }
                   >
                     ↻ 교체
                   </a>
-                  <a
-                    className={
-                      stop.kind === 'return'
-                        ? 'disabled-link text-button'
-                        : 'text-button'
-                    }
-                    href={
-                      stop.kind === 'return'
-                        ? undefined
-                        : `#/manual/${course.id}?stop=${encodeURIComponent(stop.id)}`
-                    }
-                  >
-                    ✎ 직접 입력
-                  </a>
+                  {!real && (
+                    <a
+                      className={
+                        stop.kind === 'return'
+                          ? 'disabled-link text-button'
+                          : 'text-button'
+                      }
+                      href={
+                        stop.kind === 'return'
+                          ? undefined
+                          : `#/manual/${course.id}?stop=${encodeURIComponent(stop.id)}`
+                      }
+                    >
+                      ✎ 직접 입력
+                    </a>
+                  )}
                   <div className="row reorder">
                     <button
                       type="button"
@@ -527,7 +580,9 @@ export function Itinerary({
                     <button
                       type="button"
                       aria-label={`${stop.title} 삭제`}
-                      disabled={busy}
+                      disabled={
+                        busy || (real && stop.place?.id === course.eventId)
+                      }
                       onClick={() =>
                         void commit(
                           course.stops.filter((s) => s.id !== stop.id),
@@ -547,13 +602,13 @@ export function Itinerary({
         <div className="row between">
           <span>확인된 요금 합계</span>
           <strong className="blue">
-            {priceText(cost)}
-            {unknown ? ' + 미확인 요금' : ''}
+            {real ? '방문 전 확인 필요' : priceText(cost)}
+            {!real && unknown ? ' + 미확인 요금' : ''}
           </strong>
         </div>
         <p className="tiny muted">미확인 요금·인원별 요금·교통비는 별도예요.</p>
       </section>
-      {!shared && (
+      {!shared && !real && (
         <button
           className="secondary"
           type="button"
@@ -584,7 +639,12 @@ export function Itinerary({
             내 일정으로 가져오기
           </button>
         ) : (
-          <a className="secondary" href={`#/configure/${course.eventId}`}>
+          <a
+            className="secondary"
+            href={
+              real ? `#/plan/${course.id}` : `#/configure/${course.eventId}`
+            }
+          >
             조건 바꾸기
           </a>
         )}
@@ -733,6 +793,30 @@ export function CourseMap({
           지도에 표시하지 않아요.
         </p>
       )}
+      {course && isRealCourse(course) && (
+        <section className="panel stack">
+          <h2>구간별 실제 길찾기</h2>
+          {places.slice(1).map((place, index) => {
+            const from = places[index]
+            const mode = { 자가용: 'car', 도보: 'walk', 대중교통: 'traffic' }[
+              course.settings.transport
+            ]
+            if (!from.location || !place.location) return null
+            const url = `https://map.kakao.com/link/by/${mode}/${encodeURIComponent(from.name)},${from.location.lat},${from.location.lng}/${encodeURIComponent(place.name)},${place.location.lat},${place.location.lng}`
+            return (
+              <a
+                key={`${from.id}-${place.id}-${index}`}
+                className="small blue"
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {index + 1}. {from.name} → {place.name} · 카카오맵 길찾기 ↗
+              </a>
+            )
+          })}
+        </section>
+      )}
     </>
   )
 }
@@ -760,7 +844,13 @@ export function Saved({ standalone = false }: { standalone?: boolean }) {
             showRanges
             selected={selectedDate}
             onSelect={setSelectedDate}
-            events={app.preview ? calendarDemoEvents : app.data?.events}
+            events={
+              app.preview
+                ? calendarDemoEvents
+                : livePlaces
+                  ? []
+                  : app.data?.events
+            }
             anchor={app.courses[0].settings.date}
           />
           <a className="text-button small align-right" href="#/calendar">
@@ -781,7 +871,7 @@ export function Saved({ standalone = false }: { standalone?: boolean }) {
           <a className="primary" href="#/">
             갈 곳 찾으러 가기 →
           </a>
-          {isDemo && (
+          {isDemo && !livePlaces && (
             <button
               className="secondary"
               type="button"

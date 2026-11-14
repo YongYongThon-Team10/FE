@@ -127,3 +127,50 @@ test('malformed upstream payload and invalid coordinates are handled safely', as
   )
   assert.deepEqual((await invalid.json()).places, [])
 })
+
+test('nearby category search uses selected coordinates and distance order without mixing categories', async () => {
+  const request = new Request(
+    'https://site.example/api/nearby?lat=37.25&lng=127.11&category=FD6&radius=1000',
+  )
+  const response = await searchPlaces(
+    request,
+    { KAKAO_REST_API_KEY: 'secret' },
+    async (url, init) => {
+      const u = new URL(url)
+      assert.equal(u.pathname, '/v2/local/search/category.json')
+      assert.equal(u.searchParams.get('category_group_code'), 'FD6')
+      assert.equal(u.searchParams.get('x'), '127.11')
+      assert.equal(u.searchParams.get('y'), '37.25')
+      assert.equal(u.searchParams.get('sort'), 'distance')
+      assert.equal(u.searchParams.get('radius'), '1000')
+      assert.equal(init.headers.Authorization, 'KakaoAK secret')
+      return Response.json(
+        payload([
+          { ...doc, category_group_code: 'FD6', distance: '240' },
+          { ...doc, id: '333', category_group_code: 'CE7' },
+        ]),
+      )
+    },
+  )
+  const value = await response.json()
+  assert.equal(value.places.length, 1)
+  assert.equal(value.places[0].distanceMeters, 240)
+})
+test('nearby rejects unsupported categories, invalid or missing coordinates and excessive radius', async () => {
+  for (const query of [
+    'category=FD6',
+    'lat=37.25&lng=127.11&category=FD6&radius=5001',
+    'lat=37.25&lng=127.11&category=BAD',
+    'lat=999&lng=127.11&category=CE7',
+    'lat=37.25&lng=NaN&category=CE7',
+  ]) {
+    const response = await searchPlaces(
+      new Request(`https://site.example/api/nearby?${query}`),
+      { KAKAO_REST_API_KEY: 'secret' },
+      async () => {
+        throw new Error('must not call upstream')
+      },
+    )
+    assert.equal(response.status, 400)
+  }
+})
