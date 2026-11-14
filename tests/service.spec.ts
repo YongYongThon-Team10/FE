@@ -101,7 +101,7 @@ test('일정 생성은 5칸을 유지하고 무료 후보가 없으면 식사 �
   expect(schedule(edited).some((s) => s.overflows)).toBe(true)
   expect(edited.stops[0].durationMinutes).toBe(600)
 })
-test('홈 중복·폰트·색상·실제 요일과 빈 검색 복구', async ({ page }) => {
+test('검색 전용 홈의 디자인과 빈 검색 복구', async ({ page }) => {
   await page.clock.setFixedTime(new Date('2026-11-12T12:00:00+09:00'))
   await page.goto('/#/')
   await expect(
@@ -120,13 +120,14 @@ test('홈 중복·폰트·색상·실제 요일과 빈 검색 복구', async ({ 
   ).toContain('Noto Sans KR')
   expect(
     await page
-      .locator('.primary')
+      .locator('.home-banner')
       .first()
-      .evaluate((el) => getComputedStyle(el).backgroundColor),
-  ).toBe('rgb(40, 73, 178)')
+      .evaluate((el) => getComputedStyle(el).backgroundImage),
+  ).toContain('linear-gradient')
+  await expect(page.locator('.filter-panel')).toHaveCount(0)
   await expect(
-    page.getByRole('button', { name: '2026-11-14 날짜 선택' }),
-  ).toBeVisible()
+    page.getByRole('button', { name: '조건으로 검색하기' }),
+  ).toHaveCount(0)
   await page.getByLabel('어떤 하루를 보내고 싶으세요?').fill('존재하지않는행사')
   await page.getByRole('button', { name: '검색', exact: true }).click()
   await expect(page.getByText('조건에 맞는 행사가 없어요')).toBeVisible()
@@ -134,7 +135,7 @@ test('홈 중복·폰트·색상·실제 요일과 빈 검색 복구', async ({ 
   await expect(page.locator('.event-card')).toHaveCount(5)
 })
 
-test('문장 조건을 확인한 뒤 사용자가 바꾼 지역·무료 조건을 우선한다', async ({
+test('문장 검색은 바로 결과로 이동하고 결과에서 지역·무료 조건을 수정한다', async ({
   page,
 }) => {
   await page.clock.setFixedTime(new Date('2026-11-12T12:00:00+09:00'))
@@ -142,15 +143,16 @@ test('문장 조건을 확인한 뒤 사용자가 바꾼 지역·무료 조건�
   await page
     .getByLabel('어떤 하루를 보내고 싶으세요?')
     .fill('이번 주말 기흥구 아이랑 무료 야외')
-  await page.getByRole('button', { name: '문장에서 조건 찾기' }).click()
-  await expect(page.getByRole('status')).toContainText('키워드 해석')
+  await page.getByRole('button', { name: '검색', exact: true }).click()
+  await expect(page).toHaveURL(/#\/events$/)
+  await expect(page.locator('.event-card')).toHaveCount(1)
+  await page.locator('.filter-details summary').click()
   await expect(
     page.getByRole('button', { name: '기흥구', exact: true }),
   ).toHaveAttribute('aria-pressed', 'true')
   await page.getByRole('button', { name: '기흥구', exact: true }).click()
   await page.getByRole('button', { name: '수지구', exact: true }).click()
   await page.getByRole('button', { name: '야외', exact: true }).click()
-  await page.getByRole('button', { name: '조건으로 검색하기' }).click()
   await expect(page.locator('.event-card')).toHaveCount(2)
   await expect(page.locator('.event-card').first()).toContainText(
     '우리 동네 가을 음악회',
@@ -321,4 +323,50 @@ test('잘못된 공유 링크와 손상된 저장 데이터로 화면이 멈추�
   await expect(
     page.getByRole('heading', { name: '공유 링크를 확인해 주세요.' }),
   ).toBeVisible()
+})
+
+test('새 검색과 전체 보기는 이전 조건을 초기화하고 행사명·문장 키워드를 유지한다', async ({
+  page,
+}) => {
+  await page.clock.setFixedTime(new Date('2026-11-12T12:00:00+09:00'))
+  await page.goto('/#/')
+  await page
+    .getByLabel('어떤 하루를 보내고 싶으세요?')
+    .fill('이번 주말 기흥구 아이와 무료 야외')
+  await page.getByRole('button', { name: '검색', exact: true }).click()
+  await expect(page.locator('.event-card')).toHaveCount(1)
+  await page
+    .getByRole('navigation')
+    .getByRole('link', { name: '행사 찾기' })
+    .click()
+  await page.getByLabel('어떤 하루를 보내고 싶으세요?').fill('음악회')
+  await page.getByLabel('어떤 하루를 보내고 싶으세요?').press('Enter')
+  await expect(page.locator('.event-card')).toHaveCount(1)
+  await expect(page.locator('.event-card')).toContainText(
+    '우리 동네 가을 음악회',
+  )
+  await page
+    .getByRole('navigation')
+    .getByRole('link', { name: '행사 찾기' })
+    .click()
+  await page
+    .getByLabel('어떤 하루를 보내고 싶으세요?')
+    .fill('이번 주말 무료 호수공원')
+  await page.getByRole('button', { name: '검색', exact: true }).click()
+  await expect(page.locator('.event-card')).toHaveCount(1)
+  await expect(page.locator('.event-card')).toContainText(
+    '호수공원 가을 산책마켓',
+  )
+  await page
+    .getByRole('navigation')
+    .getByRole('link', { name: '행사 찾기' })
+    .click()
+  await page.getByRole('link', { name: '행사 전체 보기' }).click()
+  await expect(page.locator('.event-card')).toHaveCount(5)
+  await page
+    .getByRole('navigation')
+    .getByRole('link', { name: '행사 찾기' })
+    .click()
+  await page.getByRole('button', { name: '검색', exact: true }).click()
+  await expect(page.locator('.event-card')).toHaveCount(5)
 })

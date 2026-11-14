@@ -244,5 +244,35 @@
     "figmaFile": "7h3RrrQLKuxoRTn70jSLn3",
     "nodeId": "199:3170",
     "screen": "shared-chrome"
+  },
+  {
+    "file": "public/figma/landing-brand.svg",
+    "figmaFile": "7h3RrrQLKuxoRTn70jSLn3",
+    "nodeId": "333:1021",
+    "screen": "home"
+  },
+  {
+    "file": "public/figma/landing-bridge.svg",
+    "figmaFile": "7h3RrrQLKuxoRTn70jSLn3",
+    "nodeId": "333:1021",
+    "screen": "home"
+  },
+  {
+    "file": "public/figma/landing-search.svg",
+    "figmaFile": "7h3RrrQLKuxoRTn70jSLn3",
+    "nodeId": "333:1021",
+    "screen": "home"
+  },
+  {
+    "file": "public/figma/landing-submit-arrow.svg",
+    "figmaFile": "7h3RrrQLKuxoRTn70jSLn3",
+    "nodeId": "333:1021",
+    "screen": "home"
+  },
+  {
+    "file": "public/figma/landing-submit-circle.svg",
+    "figmaFile": "7h3RrrQLKuxoRTn70jSLn3",
+    "nodeId": "333:1021",
+    "screen": "home"
   }
 ]

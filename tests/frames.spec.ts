@@ -65,6 +65,10 @@ test('월간 캘린더는 선택 날짜의 행사·코스를 표시하고 월 �
 test('시연 계정 → 로그인 정보 → 로그아웃 확인·취소·완료', async ({ page }) => {
   await page.goto('/#/login')
   await page.getByRole('button', { name: '시연 계정으로 둘러보기' }).click()
+  await page
+    .getByRole('navigation')
+    .getByRole('link', { name: '내 코스' })
+    .click()
   await page.getByRole('link', { name: '설정', exact: true }).click()
   await page.getByRole('link', { name: '계정 정보 보기' }).click()
   await expect(

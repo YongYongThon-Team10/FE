@@ -34,14 +34,6 @@
 .filter-panel .text-button {
   padding: 0;
 }
-.screen-home .page-content {
-  padding-top: 16px;
-}
-.screen-home .home-hero {
-  gap: 6px;
-  padding-bottom: 0;
-  margin-bottom: -6px;
-}
 .screen-contact .form-stack {
   gap: 12px;
 }

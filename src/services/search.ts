@@ -3,9 +3,13 @@ import type { Filters } from '@/domain/models'
 import { dateKey, weekDates } from '@/domain/planning'
 import { isDemo, request } from './api'
 
-export async function interpretSearch(text: string): Promise<Filters> {
+export async function interpretSearch(
+  text: string,
+  signal?: AbortSignal,
+): Promise<Filters> {
   if (!isDemo) {
     const value = await request('/search/interpret', {
+      signal,
       method: 'POST',
       body: JSON.stringify({
         text,
@@ -47,17 +51,16 @@ export async function interpretSearch(text: string): Promise<Filters> {
   else if (/야외|실외/.test(text)) filters.environment = 'outdoor'
   const hours = text.match(/(\d+)\s*시간/)
   if (hours) filters.maxDuration = Math.min(1440, Number(hours[1]) * 60)
-  if (
-    !filters.date &&
-    !filters.districts.length &&
-    !filters.companions.length &&
-    !filters.freeOnly &&
-    !filters.environment &&
-    !filters.maxDuration
-  )
-    throw new Error(
-      '조건을 이해하지 못했어요. 아래 칩으로 선택하거나 행사명으로 검색해 주세요.',
+  // Keep event/place words when the same sentence also contains conditions.
+  filters.query = text
+    .replace(
+      /이번\s*주말|오늘|내일|처인구|수지구|기흥구|무료|실내|야외|실외|\d+\s*시간/g,
+      ' ',
     )
+    .replace(/(?:아이|가족|연인|커플|친구)(?:와|과|랑)?|혼자/g, ' ')
+    .replace(/(?:갈\s*곳|가고\s*싶어요|찾아\s*주세요|추천해\s*주세요)/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
   return filters
 }
 export function parseFilters(value: unknown): Filters {

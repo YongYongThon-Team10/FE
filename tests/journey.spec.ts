@@ -15,11 +15,7 @@ test('게스트가 검색부터 지도·코스 편집·저장까지 하나의 �
     .getByLabel('어떤 하루를 보내고 싶으세요?')
     .fill('이번 주말 기흥구 아이와 야외')
   await page.getByRole('button', { name: '검색', exact: true }).click()
-  await expect(page.getByRole('status')).toContainText('조건을 확인')
-  await expect(
-    page.getByRole('button', { name: '기흥구', exact: true }),
-  ).toHaveAttribute('aria-pressed', 'true')
-  await page.getByRole('button', { name: '조건으로 검색하기' }).click()
+  await expect(page).toHaveURL(/#\/events$/)
   await expect(page.locator('.event-card')).toHaveCount(1)
 
   await page.getByRole('button', { name: '지도', exact: true }).click()

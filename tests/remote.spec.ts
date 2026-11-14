@@ -91,3 +91,62 @@ test('최초 API 오류에는 가짜 행사 목록을 표시하지 않는다', a
   await expect(page.locator('.event-card')).toHaveCount(0)
   await expect(page.getByText('시연 데이터 · 실제')).toHaveCount(0)
 })
+
+test('홈 검색의 서버 오류는 재시도하고 성공하면 해석한 결과로 바로 이동한다', async ({
+  page,
+}) => {
+  let calls = 0
+  const headers = {
+    'Access-Control-Allow-Origin': 'http://127.0.0.1:5174',
+    'Access-Control-Allow-Credentials': 'true',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  }
+  await page.route('http://127.0.0.1:5199/api/**', (route) => {
+    const url = route.request().url()
+    if (route.request().method() === 'OPTIONS')
+      return route.fulfill({ status: 204, headers })
+    if (url.endsWith('/auth/session'))
+      return route.fulfill({ headers, json: null })
+    if (url.endsWith('/catalog'))
+      return route.fulfill({ headers, json: demoCatalog })
+    if (url.endsWith('/search/interpret')) {
+      calls++
+      expect(route.request().postDataJSON()).toMatchObject({
+        text: '주말 호수공원',
+        timezone: 'Asia/Seoul',
+      })
+      return calls === 1
+        ? route.fulfill({ status: 503, headers, json: {} })
+        : route.fulfill({
+            headers,
+            json: {
+              query: '호수공원',
+              categories: [],
+              districts: [],
+              companions: [],
+              date: '',
+              until: '',
+              freeOnly: false,
+              environment: '',
+              maxDuration: null,
+            },
+          })
+    }
+    return route.fulfill({ status: 404, headers, json: {} })
+  })
+  await page.goto('/#/')
+  await page.getByLabel('어떤 하루를 보내고 싶으세요?').fill('주말 호수공원')
+  await page.getByRole('button', { name: '검색', exact: true }).click()
+  await expect(page.getByRole('alert')).toContainText('503')
+  await expect(page.getByLabel('어떤 하루를 보내고 싶으세요?')).toHaveValue(
+    '주말 호수공원',
+  )
+  await page.getByRole('button', { name: '검색', exact: true }).click()
+  await expect(page).toHaveURL(/#\/events$/)
+  await expect(page.locator('.event-card')).toHaveCount(1)
+  await expect(page.locator('.event-card')).toContainText(
+    '호수공원 가을 산책마켓',
+  )
+  expect(calls).toBe(2)
+})
