@@ -897,11 +897,9 @@ export function Facilities({
         <a href="#/facilities" className="row">
           <span className="facility-logo">ㄱ</span>
           <span>
-            <strong>기흥 여가지도</strong>
+            <strong>용인데이</strong>
             {mode === 'home' && (
-              <small className="facility-brand-subtitle">
-                GIHEUNG LEISURE MAP
-              </small>
+              <small className="facility-brand-subtitle">YONGIN DAY</small>
             )}
           </span>
         </a>
@@ -934,7 +932,7 @@ export function Facilities({
           </button>
           <div>
             <small className="tiny muted">
-              기흥 여가지도 › {item?.name ?? '홈'}
+              용인데이 › {item?.name ?? '홈'}
             </small>
             <h1>{titles[mode] ?? '시설 정보'}</h1>
           </div>

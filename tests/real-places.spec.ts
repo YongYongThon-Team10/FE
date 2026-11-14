@@ -33,6 +33,7 @@ test('실제 검색 모드 홈 → 검색 → 지도 마커·상세 → 페이�
     })
   })
   await page.goto('/#/')
+  await expect(page).toHaveTitle('용인데이')
   await expect(
     page.getByRole('heading', { name: '용인에서 가볼 만한 곳' }),
   ).toBeVisible()

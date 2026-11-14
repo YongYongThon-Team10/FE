@@ -1,3 +1,4 @@
+import { SERVICE_NAME } from '@/config/brand'
 import { useEffect, useRef, useState } from 'react'
 import { EventCard } from '@/components/EventCard'
 import { emptyFilters } from '@/domain/models'
@@ -50,17 +51,17 @@ export function Home() {
   return (
     <>
       <div className="home-greeting">
-        <img src="/figma/landing-brand.svg" alt="용인 나들이" />
+        <img src="/figma/landing-brand.svg" alt={SERVICE_NAME} />
         <label htmlFor="home-search">어떤 하루를 보내고 싶으세요?</label>
       </div>
       <section className="home-hero" aria-labelledby="home-title">
         <p className="eyebrow">가까운 곳에서 발견하는 즐거움</p>
         <div className="home-banner">
           <img className="home-bridge" src="/figma/landing-bridge.svg" alt="" />
-          <h1 id="home-title" aria-label="오늘, 용인 어디 갈까?">
+          <h1 id="home-title" aria-label={SERVICE_NAME}>
             <span className="home-today">오늘,</span>
             <span>
-              <strong>용인</strong> 어디 갈까?
+              <strong>{SERVICE_NAME}</strong>
             </span>
           </h1>
           <form

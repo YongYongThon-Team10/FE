@@ -104,9 +104,7 @@ test('일정 생성은 5칸을 유지하고 무료 후보가 없으면 식사 �
 test('검색 전용 홈의 디자인과 빈 검색 복구', async ({ page }) => {
   await page.clock.setFixedTime(new Date('2026-11-12T12:00:00+09:00'))
   await page.goto('/#/')
-  await expect(
-    page.getByRole('heading', { name: '오늘, 용인 어디 갈까?' }),
-  ).toHaveCount(1)
+  await expect(page.getByRole('heading', { name: '용인데이' })).toHaveCount(1)
   await page.evaluate(() => document.fonts.ready)
   expect(
     await page

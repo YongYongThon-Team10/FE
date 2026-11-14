@@ -1,4 +1,4 @@
-# Team 10 · FE
+# 용인데이 · Frontend
 
 용인 지역 행사 탐색과 하루 코스 설계 서비스입니다. Figma 디자인과 2026-11-09 기능명세서를 기준으로 React + TypeScript + Vite에서 구현했습니다.
 

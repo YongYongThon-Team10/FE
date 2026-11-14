@@ -1,3 +1,4 @@
+import { SERVICE_NAME } from '@/config/brand'
 import type { CSSProperties } from 'react'
 import type { Category, Companion } from '@/domain/models'
 
@@ -8,7 +9,7 @@ export function Brand({ large = false }: { large?: boolean }) {
       src={
         large ? '/figma/onboarding-imgGroup3.svg' : '/figma/home-imgGroup4.svg'
       }
-      alt="용인 나들이"
+      alt={SERVICE_NAME}
     />
   )
 }

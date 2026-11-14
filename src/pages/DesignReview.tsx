@@ -9,7 +9,9 @@ export function DesignReview() {
       </p>
       {(['192:2', '0:1'] as const).map((page) => (
         <section className="panel stack" key={page}>
-          <h2>{page === '192:2' ? '현재 서비스 UI' : '기흥 여가지도'}</h2>
+          <h2>
+            {page === '192:2' ? '현재 서비스 UI' : '용인데이 · 기흥 시설'}
+          </h2>
           {designFrames
             .filter((f) => f.page === page)
             .map((f) => (

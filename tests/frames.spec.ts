@@ -88,9 +88,7 @@ test('시연 계정 → 로그인 정보 → 로그아웃 확인·취소·완료
     page.getByRole('heading', { name: '다시 만나요!' }),
   ).toBeVisible()
   await page.getByRole('link', { name: '로그인 없이 둘러보기' }).click()
-  await expect(
-    page.getByRole('heading', { name: '오늘, 용인 어디 갈까?' }),
-  ).toBeVisible()
+  await expect(page.getByRole('heading', { name: '용인데이' })).toBeVisible()
 })
 test('시연 문의 완료와 탈퇴 확인은 실제 전송 없이 동작한다', async ({
   page,

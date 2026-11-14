@@ -1,3 +1,4 @@
+import { SERVICE_NAME } from '@/config/brand'
 import { Component, useEffect, useMemo } from 'react'
 import type { ErrorInfo, ReactNode } from 'react'
 import { AppProvider } from '@/state/AppContext'
@@ -122,7 +123,7 @@ function Shell() {
     }
   }, [rawRoute, section])
   const titles: Record<string, string> = {
-    home: '용인 나들이',
+    home: SERVICE_NAME,
     places: '장소 찾기',
     plan: '하루 코스 만들기',
     events: id ? '행사 상세' : '행사 찾기',
@@ -144,8 +145,8 @@ function Shell() {
     login: '로그인',
     register: '회원가입',
     'reset-password': '비밀번호 찾기',
-    onboarding: '용인 나들이',
-    splash: '용인 나들이',
+    onboarding: SERVICE_NAME,
+    splash: SERVICE_NAME,
     conditions: '검색 조건',
     generating: '하루 연결하기',
     replace: '다른 먹거리 추천',
@@ -160,9 +161,9 @@ function Shell() {
     'contact-complete': '문의 접수 완료',
     'logout-complete': '로그인 안내',
     'design-review': 'Figma 전체 화면',
-    facilities: '기흥 여가지도',
+    facilities: SERVICE_NAME,
   }
-  const title = titles[section] ?? '용인 나들이'
+  const title = titles[section] ?? SERVICE_NAME
   const auth = [
     'login',
     'register',
@@ -187,7 +188,7 @@ function Shell() {
     ['configure', 'course', 'shared'].includes(section) ||
     (section === 'events' && !!id)
   useEffect(() => {
-    document.title = `${title} · 용인 나들이`
+    document.title = SERVICE_NAME
     window.scrollTo({ top: 0 })
     document.querySelector<HTMLElement>('main')?.focus({ preventScroll: true })
   }, [rawRoute, title])

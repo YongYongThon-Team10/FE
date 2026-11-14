@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { SERVICE_NAME } from '@/config/brand'
 import type { Course, CourseSettings, Place } from '@/domain/models'
 import { categoryNames, emptyFilters } from '@/domain/models'
 import { useApp } from '@/state/context'
@@ -27,7 +28,7 @@ export function Onboarding({ splash = false }: { splash?: boolean }) {
       <Brand large />
       {!splash && (
         <>
-          <h1>오늘, 용인 어디 갈까?</h1>
+          <h1>{SERVICE_NAME}</h1>
           <button
             className="onboarding-enter"
             type="button"

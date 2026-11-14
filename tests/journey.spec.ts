@@ -7,9 +7,7 @@ test('게스트가 검색부터 지도·코스 편집·저장까지 하나의 �
   await page.goto('/#/onboarding')
   await page.getByRole('button', { name: '시작하기' }).click()
   await page.getByRole('button', { name: '게스트로 입장' }).click()
-  await expect(
-    page.getByRole('heading', { name: '오늘, 용인 어디 갈까?' }),
-  ).toBeVisible()
+  await expect(page.getByRole('heading', { name: '용인데이' })).toBeVisible()
 
   await page
     .getByLabel('어떤 하루를 보내고 싶으세요?')

@@ -46,7 +46,7 @@
 
 배포 주소: https://yongin-festival-guide-2026.brian180099.chatgpt.site
 
-카카오 앱: 용인 나들이 (ID 1650321). 카카오디벨로퍼스의 **앱 → 플랫폼 키**에서 REST API 키와 JavaScript 키를 확인한다. **제품 설정 → 카카오맵**은 활성 상태다.
+카카오 앱: 용인데이 (ID 1650321). 카카오디벨로퍼스의 **앱 → 플랫폼 키**에서 REST API 키와 JavaScript 키를 확인한다. **제품 설정 → 카카오맵**은 활성 상태다.
 
 프론트의 `.env.local`에 `VITE_KAKAO_JAVASCRIPT_KEY`를 설정하고 빌드하면 행사 지도·코스 동선에 카카오 지도 SDK를 사용한다. 키가 없으면 개발용 OpenStreetMap 지도를 사용한다. JavaScript SDK 도메인은 배포 origin과 `http://localhost:5173`, `http://127.0.0.1:5173`을 등록했다.
 
