@@ -30,7 +30,7 @@ export default defineConfig({
       command: 'npm run dev -- --host 127.0.0.1 --port 5173 --strictPort',
       url: 'http://127.0.0.1:5173',
       reuseExistingServer: !process.env.CI,
-      env: { VITE_API_BASE_URL: '' },
+      env: { VITE_API_BASE_URL: '', VITE_KAKAO_JAVASCRIPT_KEY: '' },
     },
     {
       command: 'npm run dev -- --host 127.0.0.1 --port 5174 --strictPort',
@@ -39,6 +39,7 @@ export default defineConfig({
       env: {
         VITE_API_BASE_URL: 'http://127.0.0.1:5199/api',
         VITE_DATA_REFRESH_MS: '15000',
+        VITE_KAKAO_JAVASCRIPT_KEY: '',
       },
     },
   ],

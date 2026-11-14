@@ -41,3 +41,15 @@
 `#/design-review`에서 50개 원본 프레임을 각각 열 수 있다. 화면 비교 모드의 저장·삭제·계정 변경은 일반 localStorage에 반영하지 않는다. 생성 중 상태는 비교 중 자동 전환하지 않는다. 실제 사용 흐름은 일반 경로에서 검증한다.
 
 `tests/journey.spec.ts`는 주 여정을 실제 클릭으로 한 번에 검증한다. `tests/service.spec.ts`는 예외·저장·공유·반응형 동작, `tests/frames.spec.ts`는 전체 프레임과 달력·계정·문의·시설 여정, `tests/remote.spec.ts`와 `tests/states.remote.spec.ts`는 대체 API 응답으로 갱신·실패·복구·생성 취소를 검증한다. 실제 계정 인증·문의 접수·AI 호출·데이터 수집 작업은 서버 연결 이후 확인한다.
+
+## 카카오 키와 배포
+
+배포 주소: https://yongin-festival-guide-2026.brian180099.chatgpt.site
+
+카카오 앱: 용인 나들이 (ID 1650321). 카카오디벨로퍼스의 **앱 → 플랫폼 키**에서 REST API 키와 JavaScript 키를 확인한다. **제품 설정 → 카카오맵**은 활성 상태다.
+
+프론트의 `.env.local`에 `VITE_KAKAO_JAVASCRIPT_KEY`를 설정하고 빌드하면 행사 지도·코스 동선에 카카오 지도 SDK를 사용한다. 키가 없으면 개발용 OpenStreetMap 지도를 사용한다. JavaScript SDK 도메인은 배포 origin과 `http://localhost:5173`, `http://127.0.0.1:5173`을 등록했다.
+
+REST API 키는 Sites의 `KAKAO_REST_API_KEY` 비밀설정에 저장하며 프론트 환경변수·소스·번들에 포함하지 않는다. 실제 장소 검색 REST 호출은 성공 확인했지만, 현 정적 프론트는 이 서버 비밀설정을 직접 읽지 않는다. 백엔드 담당자는 같은 키를 서버 환경변수로 설정하고 `POST /places/geocode` 어댑터에서 사용해야 한다. 행사 데이터·계정·코스 생성은 기존 시연 모드이며 카카오 지도가 표시된다고 실제 데이터 연동이 완료된 것은 아니다.
+
+자동 테스트에서는 외부 SDK와 실제 키에 의존하지 않도록 지도 키를 비워 기존 지도 여정을 검증한다. 실제 카카오 SDK는 등록된 도메인의 브라우저에서 마커 선택과 장소 카드 연결을 별도로 확인한다.
