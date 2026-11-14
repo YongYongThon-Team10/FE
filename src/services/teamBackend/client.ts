@@ -117,11 +117,15 @@ export function createTeamBackend({
           typeof error?.code === 'string' ? error.code : 'HTTP_ERROR',
           response.status >= 500
             ? '백엔드 연결에 실패했어요. 잠시 후 다시 시도해 주세요.'
-            : typeof error?.message === 'string'
-              ? error.message
-              : response.status === 401
-                ? '로그인이 필요해요.'
-                : `요청을 완료하지 못했어요. (${response.status})`,
+            : response.status === 404
+              ? '요청한 정보를 찾을 수 없어요. 잠시 후 다시 시도해 주세요.'
+              : response.status === 429
+                ? '요청이 많아요. 잠시 후 다시 시도해 주세요.'
+                : typeof error?.message === 'string'
+                  ? error.message
+                  : response.status === 401
+                    ? '로그인이 필요해요.'
+                    : `요청을 완료하지 못했어요. (${response.status})`,
         )
       if (!object(value) || !('data' in value) || !error || !('code' in error))
         throw malformed()
@@ -130,6 +134,12 @@ export function createTeamBackend({
       if (signal?.aborted) throw signal.reason ?? error
       if (controller.signal.aborted)
         throw new BackendError(0, 'TIMEOUT', '연결 시간이 초과됐어요.')
+      if (error instanceof TypeError)
+        throw new BackendError(
+          0,
+          'NETWORK_ERROR',
+          '서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.',
+        )
       throw error
     } finally {
       clearTimeout(timer)

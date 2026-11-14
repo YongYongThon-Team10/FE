@@ -8,6 +8,7 @@ import type { Category, Place } from '@/domain/models'
 import { createRealCourse } from '@/domain/realCourse'
 import { useApp } from '@/state/context'
 import { PlacePhoto } from '@/components/PlacePhoto'
+import { isSupportingFacility } from '@/domain/placeSelection'
 const PlaceMap = lazy(() => import('@/components/PlaceMap'))
 const category = (place: SearchPlace): Category =>
   (
@@ -78,18 +79,24 @@ export function PlaceCard({ place }: { place: SearchPlace }) {
       >
         카카오맵 상세·운영 정보 확인 ↗
       </a>
-      <button
-        type="button"
-        className="primary small"
-        aria-label={`${place.name}로 하루 코스 만들기`}
-        onClick={() => {
-          const course = createRealCourse(place)
-          app.storeDraft(course)
-          go(`/plan/${course.id}`)
-        }}
-      >
-        이 장소로 하루 코스 만들기 →
-      </button>
+      {isSupportingFacility(place) ? (
+        <p className="tiny muted">
+          방문 편의시설이에요. 하루 코스는 명소·음식점·카페에서 시작해 주세요.
+        </p>
+      ) : (
+        <button
+          type="button"
+          className="primary small"
+          aria-label={`${place.name}로 하루 코스 만들기`}
+          onClick={() => {
+            const course = createRealCourse(place)
+            app.storeDraft(course)
+            go(`/plan/${course.id}`)
+          }}
+        >
+          이 장소로 하루 코스 만들기 →
+        </button>
+      )}
     </article>
   )
 }

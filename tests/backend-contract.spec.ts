@@ -22,6 +22,23 @@ const unauthorized = () =>
   )
 const baseUrl = 'https://backend.example.com'
 
+test('네트워크 실패는 한국어 오류로 안내하고 재시도 시 정상 복구한다', async () => {
+  let failed = true
+  const client = createTeamBackend({
+    baseUrl,
+    fetcher: async () => {
+      if (failed) throw new TypeError('Failed to fetch')
+      return ok({ events: [], totalCount: 0 })
+    },
+  })
+  await expect(client.events({})).rejects.toMatchObject({
+    code: 'NETWORK_ERROR',
+    message: '서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.',
+  })
+  failed = false
+  await expect(client.events({})).resolves.toMatchObject({ events: [] })
+})
+
 test('이미지 필드 우선순위와 안전한 URL, 명소 이름 정확 일치', () => {
   expect(
     photoCandidates('에버랜드', {

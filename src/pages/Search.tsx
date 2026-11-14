@@ -54,7 +54,7 @@ export function Search({
         <h2>축제·행사</h2>
         {events.error ? (
           <p className="error" role="alert">
-            {events.error}{' '}
+            {events.error} 장소 검색은 아래에서 계속 이용할 수 있어요.{' '}
             <button onClick={events.retry}>행사 검색 다시 시도</button>
           </p>
         ) : !events.data ? (
@@ -127,7 +127,10 @@ export function Search({
           <>
             <p>장소 검색 결과 {places.data.totalCount}곳</p>
             {!places.data.places.length && (
-              <p>검색된 장소가 없어요. 위의 행사 결과도 확인해 주세요.</p>
+              <p>
+                검색된 장소가 없어요. 장소명이나 카페·공원 같은 키워드로 다시
+                검색해 주세요.
+              </p>
             )}
             {places.data.places.map((place) => (
               <PlaceCard key={place.id} place={place} />

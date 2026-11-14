@@ -21,6 +21,113 @@ const result = (q: string, page = 1, empty = false) => ({
   fetchedAt: '2026-11-14T07:00:00Z',
 })
 
+test('검색의 편의시설은 조회를 유지하고 코스 목적지 선택에서는 제외한다', async ({
+  page,
+}) => {
+  await page.route('**/api/places?*', (route) =>
+    route.fulfill({
+      json: {
+        ...result('한국민속촌'),
+        places: [
+          place('1', '한국민속촌'),
+          { ...place('2', '한국민속촌 주차장'), categoryGroup: 'PK6' },
+          { ...place('3', '한국민속촌 매표소'), category: '서비스 > 매표소' },
+          place('4', '화장실문화박물관'),
+        ],
+      },
+    }),
+  )
+  await page.goto('/#/places?q=한국민속촌')
+  await expect(page.locator('.live-place-card')).toHaveCount(4)
+  await expect(
+    page.getByRole('button', { name: /로 하루 코스 만들기/ }),
+  ).toHaveCount(2)
+  await expect(
+    page.getByRole('link', { name: '한국민속촌 주차장 ↗', exact: true }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('button', {
+      name: '화장실문화박물관로 하루 코스 만들기',
+      exact: true,
+    }),
+  ).toBeVisible()
+  await page.getByRole('button', { name: '지도', exact: true }).click()
+  await expect(page.locator('.leaflet-marker-icon')).toHaveCount(4)
+})
+
+test('브라우저가 입력한 날짜는 코스 결과·저장·독립 공유 화면까지 유지한다', async ({
+  page,
+  browser,
+}) => {
+  await page.clock.setFixedTime(new Date('2026-11-15T12:00:00+09:00'))
+  await page.route('**/api/places?*', (route) =>
+    route.fulfill({ json: result('선택장소') }),
+  )
+  await page.route('**/api/nearby?*', (route) =>
+    route.fulfill({ json: result('근처', 1, true) }),
+  )
+  await page.goto('/#/places?q=선택장소')
+  await page.getByRole('button', { name: /로 하루 코스 만들기/ }).click()
+  await expect(
+    page.getByRole('button', { name: '이 장소들로 하루 코스 만들기' }),
+  ).toBeEnabled()
+  // Simulate a browser picker/autofill updating the control before change fires.
+  await page
+    .getByLabel('방문 날짜', { exact: true })
+    .evaluate((input: HTMLInputElement) => {
+      input.value = '2026-11-16'
+    })
+  await page
+    .getByRole('button', { name: '이 장소들로 하루 코스 만들기' })
+    .click()
+  await expect(page.locator('main')).toContainText('2026-11-16')
+  await page.getByRole('link', { name: '저장 · 공유' }).click()
+  await page
+    .getByRole('button', { name: '내 코스에 저장', exact: true })
+    .click()
+  await page.reload()
+  await expect(page.locator('main')).toContainText('2026-11-16')
+  const stored = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('yongin.courses.v1')!),
+  )
+  expect(stored[0].settings.date).toBe('2026-11-16')
+  await page.getByRole('button', { name: '공유 일정 미리보기' }).click()
+  const receiver = await browser.newContext()
+  try {
+    const sharedPage = await receiver.newPage()
+    await sharedPage.goto(page.url())
+    await expect(sharedPage.locator('main')).toContainText('2026-11-16')
+    await sharedPage
+      .getByRole('button', { name: '이 브라우저에 저장', exact: true })
+      .click()
+    const imported = await sharedPage.evaluate(() =>
+      JSON.parse(localStorage.getItem('yongin.courses.v1')!),
+    )
+    expect(imported[0].settings.date).toBe('2026-11-16')
+    expect(imported[0].id).not.toBe(stored[0].id)
+  } finally {
+    await receiver.close()
+  }
+})
+
+test('실제 장소 모드의 설정·도움말에는 시연 데이터 푸터를 표시하지 않는다', async ({
+  page,
+}) => {
+  for (const path of [
+    'settings',
+    'notifications',
+    'privacy',
+    'account',
+    'notices',
+    'contact',
+    'guide',
+  ]) {
+    await page.goto(`/#/${path}`)
+    await expect(page.locator('.data-footer')).not.toContainText('시연 데이터')
+    await expect(page.locator('.data-footer')).toContainText('공식 출처')
+  }
+})
+
 test('홈 추천은 대표 명소 본체만 표시하고 주차장과 부대시설을 제외한다', async ({
   page,
 }) => {
@@ -330,6 +437,7 @@ test('실제 장소 선택 → 주변 음식점·카페 → 코스 편집·동�
   ).toBeVisible()
   await page.reload()
   await expect(page.getByLabel('주변 음식점 선택')).toBeVisible()
+  await page.getByLabel('방문 날짜', { exact: true }).fill('2026-11-16')
   await page.getByLabel('주변 음식점 선택').selectOption('202')
   await page.getByLabel('선택 장소 체류 시간(분)').fill('180')
   await page.getByLabel('종료 시간').fill('12:00')
@@ -337,6 +445,7 @@ test('실제 장소 선택 → 주변 음식점·카페 → 코스 편집·동�
     .getByRole('button', { name: '이 장소들로 하루 코스 만들기' })
     .click()
   await expect(page.locator('.stop-card')).toHaveCount(3)
+  await expect(page.locator('main')).toContainText('2026-11-16')
   await expect(page.getByRole('alert')).toContainText('종료 시간')
   await expect(page.locator('.stop-card').nth(1)).toContainText('실제 음식점 B')
   await expect(page.locator('.stop-card').nth(2)).toContainText('실제 카페 C')
@@ -379,6 +488,7 @@ test('실제 장소 선택 → 주변 음식점·카페 → 코스 편집·동�
     JSON.parse(localStorage.getItem('yongin.courses.v1')!),
   )
   expect(saved[0].isDemo).toBe(false)
+  expect(saved[0].settings.date).toBe('2026-11-16')
   expect(
     saved[0].stops.every(
       (stop: { place: { source: { isDemo: boolean } } }) =>

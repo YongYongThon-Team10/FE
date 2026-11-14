@@ -130,15 +130,28 @@ export function RealCoursePlan({ course }: { course: Course }) {
   )
   const generating = !ready
   const failed = Boolean(ready?.foodError || ready?.cafeError)
-  const generate = () => {
+  const generate = (form: HTMLFormElement) => {
+    // Read the submitted controls too: browser date pickers/autofill may update
+    // the visible input before React has received a change event.
+    const fields = new FormData(form)
+    const submittedSettings = {
+      ...settings,
+      date: String(fields.get('date')),
+      startTime: String(fields.get('startTime')),
+      endTime: String(fields.get('endTime')),
+      transport: String(
+        fields.get('transport'),
+      ) as Course['settings']['transport'],
+    }
+    const submittedDuration = Number(fields.get('duration'))
     setError('')
     if (
-      !settings.date ||
-      !Number.isFinite(Date.parse(settings.date)) ||
-      settings.startTime >= settings.endTime ||
-      !Number.isInteger(duration) ||
-      duration < 15 ||
-      duration > 480
+      !/^\d{4}-\d{2}-\d{2}$/.test(submittedSettings.date) ||
+      !Number.isFinite(Date.parse(submittedSettings.date)) ||
+      submittedSettings.startTime >= submittedSettings.endTime ||
+      !Number.isInteger(submittedDuration) ||
+      submittedDuration < 15 ||
+      submittedDuration > 480
     ) {
       setError(
         '방문 날짜와 시작·종료 시간, 체류 시간(15~480분)을 확인해 주세요.',
@@ -174,7 +187,7 @@ export function RealCoursePlan({ course }: { course: Course }) {
       : undefined
     const chosen: CourseStop[] = course.stops.flatMap((stop) => {
       if (stop.place?.id === anchor.id)
-        return [{ ...stop, durationMinutes: duration }]
+        return [{ ...stop, durationMinutes: submittedDuration }]
       if (stop.id === oldMeal?.id) return newMeal ? [newMeal] : []
       if (stop.id === oldCafe?.id) return newCafe ? [newCafe] : []
       return [stop]
@@ -196,7 +209,7 @@ export function RealCoursePlan({ course }: { course: Course }) {
     const next = recalculate({
       ...course,
       planned: true,
-      settings,
+      settings: submittedSettings,
       stops: chosen,
     })
     app.storeDraft(next)
@@ -265,7 +278,7 @@ export function RealCoursePlan({ course }: { course: Course }) {
         className="form-stack"
         onSubmit={(event) => {
           event.preventDefault()
-          generate()
+          generate(event.currentTarget)
         }}
       >
         <section className="panel form-stack">
@@ -273,6 +286,7 @@ export function RealCoursePlan({ course }: { course: Course }) {
             방문 날짜
             <input
               type="date"
+              name="date"
               required
               value={settings.date}
               onChange={(event) =>
@@ -285,6 +299,7 @@ export function RealCoursePlan({ course }: { course: Course }) {
               시작 시간
               <input
                 type="time"
+                name="startTime"
                 required
                 value={settings.startTime}
                 onChange={(event) =>
@@ -296,6 +311,7 @@ export function RealCoursePlan({ course }: { course: Course }) {
               종료 시간
               <input
                 type="time"
+                name="endTime"
                 required
                 value={settings.endTime}
                 onChange={(event) =>
@@ -308,6 +324,7 @@ export function RealCoursePlan({ course }: { course: Course }) {
             선택 장소 체류 시간(분)
             <input
               type="number"
+              name="duration"
               min={15}
               max={480}
               required
@@ -318,6 +335,7 @@ export function RealCoursePlan({ course }: { course: Course }) {
           <label className="field">
             이동수단
             <select
+              name="transport"
               value={settings.transport}
               onChange={(event) =>
                 setSettings({

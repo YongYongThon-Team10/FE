@@ -5,6 +5,75 @@ const examples = JSON.parse(
 )
 const ok = (data: unknown) => ({ data, error: { code: null, message: null } })
 
+test('BE 통신 실패에도 장소 검색은 유지하고 재시도로 행사 정보를 복구한다', async ({
+  page,
+}) => {
+  let fail = true
+  await page.route('https://be.example.test/**', (route) =>
+    fail
+      ? route.abort('failed')
+      : route.fulfill({
+          json: ok({ totalCount: 0, events: [], page: 0, size: 100 }),
+        }),
+  )
+  await page.route('**/api/places?*', (route) =>
+    route.fulfill({
+      json: {
+        places: [
+          {
+            id: '1',
+            name: '한국민속촌',
+            category: '여행 > 관광,명소',
+            categoryGroup: 'AT4',
+            address: '경기 용인시 기흥구 보라동 35',
+            roadAddress: '',
+            phone: '',
+            location: { lat: 37.2596, lng: 127.1198 },
+            url: 'https://place.map.kakao.com/1',
+          },
+        ],
+        isEnd: true,
+        totalCount: 1,
+        pageableCount: 1,
+        query: '한국민속촌',
+        page: 1,
+        source: '카카오맵',
+        fetchedAt: new Date().toISOString(),
+      },
+    }),
+  )
+  await page.goto('/#/search?q=한국민속촌')
+  await expect(page.getByRole('alert')).toContainText(
+    '서버에 연결하지 못했어요',
+  )
+  await expect(page.getByRole('alert')).toContainText(
+    '장소 검색은 아래에서 계속 이용',
+  )
+  await expect(
+    page.getByRole('button', {
+      name: '한국민속촌로 하루 코스 만들기',
+      exact: true,
+    }),
+  ).toBeVisible()
+  await expect(page.locator('body')).not.toContainText('Failed to fetch')
+  fail = false
+  await page
+    .getByRole('button', { name: '행사 검색 다시 시도', exact: true })
+    .click()
+  await expect(
+    page.getByRole('region', { name: '행사 검색 결과' }),
+  ).toContainText('행사 검색 결과 0건')
+  await expect(page.getByRole('alert')).toHaveCount(0)
+  fail = true
+  await page.goto('/#/festivals')
+  await expect(
+    page.getByRole('link', {
+      name: '실제 장소로 하루 코스 만들기',
+      exact: true,
+    }),
+  ).toBeVisible()
+})
+
 test('실제 행사 캘린더는 월·날짜를 조회하고 공용 서버 코스는 개인 목록에 노출하지 않는다', async ({
   page,
 }) => {

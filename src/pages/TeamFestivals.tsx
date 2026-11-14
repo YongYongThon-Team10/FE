@@ -20,6 +20,11 @@ function Status({ error, retry }: { error?: string; retry: () => void }) {
   return error ? (
     <div role="alert" className="error">
       {error}
+      <p>
+        행사 정보를 불러오지 못해도{' '}
+        <a href="#/places?q=용인%20관광명소">실제 장소로 하루 코스 만들기</a>는
+        계속 이용할 수 있어요.
+      </p>
       <button className="text-button" onClick={retry}>
         다시 불러오기
       </button>

@@ -582,11 +582,13 @@ function Shell() {
                       (shared && isRealCourse(shared)) ||
                       (section === 'events' && !id))
                   ? '실제 장소 정보 · 카카오맵 제공 · 운영 정보는 상세 페이지에서 확인해 주세요.'
-                  : isDemo
-                    ? '시연 데이터 · 실제 행사·장소·요금과 다를 수 있어요.'
-                    : app.data
-                      ? `정보 갱신 ${new Date(app.data.updatedAt).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}`
-                      : '정보를 불러오지 못했어요.'}
+                  : !app.preview && (teamBackend.enabled || livePlaces)
+                    ? '운영 정보는 공식 출처에서 확인해 주세요. 저장한 코스는 이 브라우저에 보관됩니다.'
+                    : isDemo
+                      ? '시연 데이터 · 실제 행사·장소·요금과 다를 수 있어요.'
+                      : app.data
+                        ? `정보 갱신 ${new Date(app.data.updatedAt).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}`
+                        : '정보를 불러오지 못했어요.'}
               {!isDemo && (
                 <button
                   type="button"
