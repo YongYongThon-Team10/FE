@@ -20,9 +20,10 @@ React/Vite 프론트는 `npm run build`로 `dist`에 빌드한다. `api/places.j
 
 2026-11-14 기준 배포는 CLI로 진행하며, Git 자동 배포는 아직 연결되지 않았다.
 
-- 팀 저장소 `YongYongThon-Team10/FE`는 비공개 organization 저장소다. 현재 Hobby 프로젝트에서는 이 저장소의 Git 배포를 지원하지 않으므로 비공개 유지 시 Pro 전환이 필요하다. [Vercel 공식 안내](https://vercel.com/docs/git#using-hobby-teams).
+- 팀 저장소 `YongYongThon-Team10/FE`는 사용자 승인에 따라 공개로 전환했다. 공개 저장소로 Hobby 무료 Git 배포를 연결할 수 있다. [Vercel 공식 안내](https://vercel.com/docs/git#using-hobby-teams).
 - GitHub organization 소유자가 Vercel GitHub App 설치를 승인해야 한다. 저장소 접근 범위는 `Only select repositories`에서 `FE`만 선택한다.
-- 위 조건 충족 후 Vercel 프로젝트의 Settings → Git에서 저장소를 연결하고 Production Branch를 `codex/figma-service-ui`로 설정한다. 최신 코드가 main에 병합되면 production 브랜치도 main으로 변경한다.
+- 공개 전환 후 CLI의 Git 연결은 저장소 접근 오류로 실패했다. GitHub 설치 화면에서는 현재 계정에 Install 대신 Request만 표시되므로 조직 소유자의 앱 설치 승인이 필요하다.
+- 승인 후 Vercel 프로젝트의 Settings → Git에서 저장소를 연결하고 Settings → Environments → Production → Branch Tracking에서 `codex/figma-service-ui`를 설정한다. 최신 코드가 main에 병합되면 production 브랜치도 main으로 변경한다.
 - 연결 후 해당 브랜치의 새 커밋 푸시로 생성되는 배포가 Ready인지, 프로덕션 도메인에 반영되는지 확인해야 자동 배포 검증이 완료된다.
 
-요금제 변경과 저장소 공개 전환은 별도 승인 전 수행하지 않는다. API 키나 Vercel 토큰은 저장소와 GitHub Actions 파일에 기록하지 않는다.
+요금제는 Hobby를 유지한다. API 키나 Vercel 토큰은 저장소와 GitHub Actions 파일에 기록하지 않는다. 조직 소유자는 https://github.com/apps/vercel/installations/new 에서 `YongYongThon-Team10`을 선택하고 `Only select repositories` → `FE`만 지정해 설치를 승인하면 된다.
