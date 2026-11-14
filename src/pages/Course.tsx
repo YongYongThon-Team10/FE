@@ -633,7 +633,14 @@ export function Itinerary({
           + 일정에 장소 추가
         </button>
       )}
-      <a className="secondary" href={`#/course-map/${course.id}`}>
+      <a
+        className="secondary"
+        href={
+          shared
+            ? `#/shared-map?${window.location.hash.split('?')[1] ?? ''}`
+            : `#/course-map/${course.id}`
+        }
+      >
         ⌖ 지도에서 동선 확인하기
       </a>
       <p className="tiny muted">
@@ -663,9 +670,22 @@ export function Itinerary({
             조건 바꾸기
           </a>
         )}
-        <a className="primary" href={`#/share/${course.id}`}>
-          저장 · 공유 ↗
-        </a>
+        {shared ? (
+          <button
+            className="primary"
+            onClick={() => {
+              const imported = { ...course, id: crypto.randomUUID() }
+              app.storeDraft(imported)
+              if (app.saveCourse(imported)) go('/saved-courses')
+            }}
+          >
+            이 브라우저에 저장
+          </button>
+        ) : (
+          <a className="primary" href={`#/share/${course.id}`}>
+            저장 · 공유 ↗
+          </a>
+        )}
       </div>
       {adding && (
         <Modal title="일정에 장소 추가" onClose={() => setAdding(false)}>

@@ -201,6 +201,7 @@ test('홈 통합 검색은 여러 페이지의 행사명과 실제 장소를 함
 
 test('행사 코스를 브라우저 편집본으로 저장하고 지도·도움말·수정·공유·재접속까지 연결한다', async ({
   page,
+  browser,
 }) => {
   const itinerary = structuredClone(examples['12'])
   itinerary.data.baseEventId = itinerary.data.slots[0].eventId
@@ -258,6 +259,24 @@ test('행사 코스를 브라우저 편집본으로 저장하고 지도·도움�
   await expect(
     page.getByRole('button', { name: '내 일정으로 가져오기' }),
   ).toBeVisible()
+  const receiverContext = await browser.newContext()
+  try {
+    const receiver = await receiverContext.newPage()
+    await receiver.goto(page.url())
+    await receiver.getByRole('link', { name: /지도에서 동선 확인하기/ }).click()
+    await expect(receiver.locator('.leaflet-marker-icon').first()).toBeVisible()
+    await receiver
+      .getByRole('button', { name: '뒤로 가기', exact: true })
+      .click()
+    await receiver
+      .getByRole('button', { name: '이 브라우저에 저장', exact: true })
+      .click()
+    await expect(
+      receiver.getByRole('link', { name: '코스 열기 →', exact: true }),
+    ).toBeVisible()
+  } finally {
+    await receiverContext.close()
+  }
   expect(mutations).toEqual([])
   const raw = await page.evaluate(() =>
     localStorage.getItem('yongin.courses.v1'),

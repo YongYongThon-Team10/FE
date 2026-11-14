@@ -125,7 +125,7 @@ function Shell() {
   const course =
     app.draft?.id === id ? app.draft : app.courses.find((c) => c.id === id)
   const shared = useMemo(() => {
-    if (section !== 'shared') return null
+    if (!['shared', 'shared-map'].includes(section)) return null
     try {
       const payload = new URLSearchParams(rawRoute.split('?')[1]).get('data')
       if (!payload || payload.length > 24000) return null
@@ -164,6 +164,7 @@ function Shell() {
     contact: '문의하기',
     guide: '이용 가이드',
     shared: '함께하는 하루',
+    'shared-map': '공유 일정 동선',
     login: '로그인',
     register: '회원가입',
     'reset-password': '비밀번호 찾기',
@@ -365,6 +366,13 @@ function Shell() {
     case 'shared':
       content = shared ? (
         <Itinerary course={shared} shared />
+      ) : (
+        <Missing message="공유 링크를 확인해 주세요." />
+      )
+      break
+    case 'shared-map':
+      content = shared ? (
+        <CourseMap course={shared} />
       ) : (
         <Missing message="공유 링크를 확인해 주세요." />
       )
