@@ -4,7 +4,8 @@ import { Modal } from '@/components/Modal'
 import { useApp } from '@/state/context'
 import type { Preferences } from '@/domain/models'
 import { go } from '@/hooks/useRoute'
-import { api, isDemo, request } from '@/services/api'
+import { api, isDemo, isAuthDemo, request } from '@/services/api'
+import { teamBackend } from '@/services/teamBackend'
 import { sampleUser } from '@/data/scenarios'
 
 export function Login({
@@ -28,7 +29,11 @@ export function Login({
         go('/')
       } else if (mode === 'register') {
         await api.register(email, password, name)
-        setMessage('회원가입 요청이 완료됐어요. 이메일 안내를 확인해 주세요.')
+        if (teamBackend.enabled) {
+          app.setUser(await api.session())
+          go('/')
+        } else
+          setMessage('회원가입 요청이 완료됐어요. 이메일 안내를 확인해 주세요.')
         setPassword('')
       } else {
         await api.resetPassword(email)
@@ -88,7 +93,7 @@ export function Login({
               required
               type="password"
               minLength={mode === 'register' ? 8 : 1}
-              maxLength={128}
+              maxLength={teamBackend.enabled ? 64 : 128}
               autoComplete={
                 mode === 'register' ? 'new-password' : 'current-password'
               }
@@ -108,7 +113,12 @@ export function Login({
                 : '재설정 메일 받기'}
         </button>
       </form>
-      {isDemo && (
+      {teamBackend.enabled && (
+        <p className="small muted">
+          로그인은 현재 페이지에서 유지돼요. 새로고침하면 다시 로그인해 주세요.
+        </p>
+      )}
+      {isAuthDemo && (
         <p className="small muted">
           계정 서비스 연결 준비 중이에요. 게스트 또는 시연 계정으로 화면 흐름을
           확인할 수 있어요.
@@ -122,7 +132,7 @@ export function Login({
       <button className="secondary" type="button" onClick={() => go('/')}>
         게스트로 입장
       </button>
-      {isDemo && (
+      {isAuthDemo && (
         <button
           className="text-button small"
           type="button"
@@ -155,7 +165,7 @@ export function Settings() {
   const leave = async () => {
     setBusy(true)
     try {
-      if (!isDemo && user) await api.logout()
+      if (!isAuthDemo && user) await api.logout()
       setUser(null)
       setLogout(false)
       setToast('로그아웃했어요.')
@@ -344,7 +354,7 @@ export function Privacy() {
     setBusy(true)
     setError('')
     try {
-      if (!isDemo) await api.deleteAccount()
+      if (!isAuthDemo) await api.deleteAccount()
       app.clearLocalAccount()
       app.setPreferences({ ...app.preferences, location: false })
       setConfirm(false)

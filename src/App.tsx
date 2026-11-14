@@ -7,6 +7,7 @@ import { PageContainer } from '@/components/PageContainer'
 import { NavIcon, Brand } from '@/components/Brand'
 import { Home } from '@/pages/Home'
 import { Places } from '@/pages/Places'
+import { TeamFestivals, FestivalItinerary } from '@/pages/TeamFestivals'
 import { RealCoursePlan } from '@/pages/RealCoursePlan'
 import { isRealCourse } from '@/domain/realCourse'
 import { livePlaces } from '@/services/places'
@@ -194,6 +195,12 @@ function Shell() {
   }, [rawRoute, title])
   let content: ReactNode
   switch (section) {
+    case 'festivals':
+      content = <TeamFestivals key={id} id={id} />
+      break
+    case 'festival-itinerary':
+      content = <FestivalItinerary key={id} id={id} />
+      break
     case 'conditions':
       content = <SearchConditions />
       break

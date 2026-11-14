@@ -7,6 +7,7 @@ import { go } from '@/hooks/useRoute'
 import { interpretSearch } from '@/services/search'
 import { livePlaces } from '@/services/places'
 import { Places } from './Places'
+import { teamBackend } from '@/services/teamBackend'
 
 export function Home() {
   const { setFilters, data } = useApp()
@@ -121,6 +122,11 @@ export function Home() {
         className="home-recommendations stack"
         aria-labelledby="home-recommendations-title"
       >
+        {teamBackend.enabled && (
+          <a className="secondary" href="#/festivals">
+            용인 축제와 행사 찾아보기
+          </a>
+        )}
         <div className="row between">
           <h2 id="home-recommendations-title">
             {livePlaces ? '처음이라면, 용인 대표 명소' : '이번 주말 추천 행사'}

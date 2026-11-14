@@ -1,4 +1,10 @@
 import type {
+  EventDetail,
+  SlotInput,
+  Candidates,
+  SharedItinerary,
+  CalendarMonth,
+  CalendarDate,
   CourseList,
   EventList,
   EventQuery,
@@ -235,6 +241,61 @@ export function createTeamBackend({
           )
       return call<EventList>(`/api/events?${params}`, { signal })
     },
+    event: (eventId: string, signal?: AbortSignal) =>
+      call<EventDetail>(`/api/events/${id(eventId)}`, { signal }),
+    discrepancies: (eventId: string, signal?: AbortSignal) =>
+      call<{ eventId: string; hasDiscrepancy: boolean; items: unknown[] }>(
+        `/api/events/${id(eventId)}/discrepancies`,
+        { signal },
+      ),
+    addSlot: (itineraryId: string, input: SlotInput) =>
+      call<Itinerary>(`${itinerary(itineraryId)}/slots`, json(input)),
+    deleteSlot: (itineraryId: string, slotId: string) =>
+      call<Itinerary>(`${itinerary(itineraryId)}/slots/${id(slotId)}`, {
+        method: 'DELETE',
+      }),
+    replaceSlot: (
+      itineraryId: string,
+      slotId: string,
+      replacement:
+        | { replaceWithCandidateId: string; replaceWithEventId?: never }
+        | { replaceWithEventId: string; replaceWithCandidateId?: never },
+    ) =>
+      call<Itinerary>(`${itinerary(itineraryId)}/slots/${id(slotId)}`, {
+        ...json(replacement),
+        method: 'PUT',
+      }),
+    alternatives: (
+      itineraryId: string,
+      slotId: string,
+      limit = 3,
+      signal?: AbortSignal,
+    ) =>
+      call<Candidates>(
+        `${itinerary(itineraryId)}/slots/${id(slotId)}/alternatives?limit=${limit}`,
+        { signal },
+      ),
+    mealCandidates: (
+      itineraryId: string,
+      slotId: string,
+      limit = 3,
+      signal?: AbortSignal,
+    ) =>
+      call<Candidates>(
+        `${itinerary(itineraryId)}/slots/${id(slotId)}/meal-candidates?limit=${limit}`,
+        { signal },
+      ),
+    shared: (shareId: string, signal?: AbortSignal) =>
+      call<SharedItinerary>(`/api/shared/${id(shareId)}`, { signal }),
+    calendarMonth: (month: string, signal?: AbortSignal) =>
+      call<CalendarMonth>(
+        `/api/me/calendar?${new URLSearchParams({ month })}`,
+        { signal },
+      ),
+    calendarDate: (date: string, signal?: AbortSignal) =>
+      call<CalendarDate>(`/api/me/calendar?${new URLSearchParams({ date })}`, {
+        signal,
+      }),
     parseSearch: (query: string, today: string, signal?: AbortSignal) =>
       call<ParsedSearch>('/api/search/parse', json({ query, today }, signal)),
     originPlaces: (query: string, signal?: AbortSignal) =>

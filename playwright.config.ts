@@ -16,12 +16,17 @@ export default defineConfig({
   projects: [
     {
       name: 'mobile',
-      testIgnore: /(?:remote|real-places|backend-contract)\.spec\.ts/,
+      testIgnore: /(?:remote|real-places|backend-contract|team-api)\.spec\.ts/,
       use: { baseURL: 'http://127.0.0.1:5173' },
     },
     {
       name: 'backend-contract',
       testMatch: /backend-contract\.spec\.ts/,
+    },
+    {
+      name: 'team-api',
+      testMatch: /team-api\.spec\.ts/,
+      use: { baseURL: 'http://127.0.0.1:5176' },
     },
     {
       name: 'real-places',
@@ -35,6 +40,17 @@ export default defineConfig({
     },
   ],
   webServer: [
+    {
+      command: 'npm run dev -- --host 127.0.0.1 --port 5176 --strictPort',
+      url: 'http://127.0.0.1:5176',
+      reuseExistingServer: !process.env.CI,
+      env: {
+        VITE_API_BASE_URL: '',
+        VITE_TEAM_API_BASE_URL: 'https://be.example.test',
+        VITE_PLACES_API_BASE: '/api',
+        VITE_KAKAO_JAVASCRIPT_KEY: '',
+      },
+    },
     {
       command: 'npm run dev -- --host 127.0.0.1 --port 5175 --strictPort',
       url: 'http://127.0.0.1:5175',

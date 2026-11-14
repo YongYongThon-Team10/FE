@@ -58,6 +58,129 @@ export type EventList = {
   size: number
   events: EventItem[]
 }
+export type EventDetail = ImageFields & {
+  eventId: string
+  name: string
+  summary: string | null
+  category: string
+  subCategory: string | null
+  district: string | null
+  isLiked: boolean
+  hasDiscrepancy: boolean
+  tags: string[]
+  keyInfo: {
+    startDate: string | null
+    endDate: string | null
+    dateStatus: string
+    time: string | null
+    runningTimeMin: number | null
+    placeName: string | null
+    address: string | null
+    district: string | null
+    lat: number | null
+    lng: number | null
+    fee: string | null
+    isFree: boolean | null
+  }
+  notice: string | null
+  apply: {
+    type: string | null
+    text: string | null
+    url: string | null
+    receiptStart: string | null
+    receiptEnd: string | null
+    status: string | null
+  }
+  programs: {
+    programId: string
+    name: string
+    time: string | null
+    durationMin: number | null
+    costAmount: number | null
+    costText: string | null
+    description: string | null
+  }[]
+  sources: { name: string; type: string; url: string }[]
+}
+export type SlotInput = {
+  type: 'nearbyEvent' | 'program' | 'meal' | 'custom'
+  eventId?: string
+  programId?: string
+  title?: string
+  durationMin?: number
+  costText?: string
+  address?: string
+  afterSlotId?: string
+}
+export type Candidates = {
+  slotId: string
+  type: string
+  candidates: {
+    candidateId: string
+    kind: string
+    eventId: string | null
+    name: string
+    category: string | null
+    placeName: string | null
+    lat: number | null
+    lng: number | null
+    time: string | null
+    durationMin: number | null
+    costAmount: number | null
+    costText: string | null
+    distanceKmFromPrev: number | null
+    estimatedMinutes: number | null
+    description: string | null
+    source: 'event' | 'sample'
+  }[]
+}
+export type SharedItinerary = {
+  shareId: string
+  title: string | null
+  date: string
+  companion: string | null
+  slotCount: number
+  totalCost: number
+  costUnknownCount: number
+  coverImageUrl: string | null
+  slots: {
+    order: number
+    type: string
+    title: string | null
+    startTime: string | null
+    endTime: string | null
+    durationMin: number | null
+    costText: string | null
+    place: {
+      name: string | null
+      lat: number | null
+      lng: number | null
+    } | null
+  }[]
+}
+export type CalendarMonth = {
+  month: string
+  events: {
+    eventId: string
+    name: string
+    startDate: string | null
+    endDate: string | null
+  }[]
+  courses: { itineraryId: string; title: string | null; date: string }[]
+}
+export type CalendarDate = {
+  date: string
+  eventCount: number
+  courseCount: number
+  events: {
+    eventId: string
+    name: string
+    category: string
+    startDate: string | null
+    endDate: string | null
+  }[]
+  courses: { itineraryId: string; title: string | null; slotCount: number }[]
+}
 export type ParsedSearch = {
   parsed: boolean
   conditions: {
@@ -125,11 +248,11 @@ export type Slot = {
 }
 export type Itinerary = {
   itineraryId: string
-  title: string
+  title: string | null
   baseEventId: string
   date: string
-  transport: Transport
-  timeWindow: { start: string; end: string }
+  transport: Transport | null
+  timeWindow: { start: string | null; end: string | null }
   totalCost: number
   costUnknownCount: number
   coverImageUrl: string | null
@@ -142,7 +265,7 @@ export type Itinerary = {
 export type SavedCourse = {
   courseId: string
   itineraryId: string
-  title: string
+  title: string | null
   isSaved: boolean
   savedAt: string
 }
@@ -153,10 +276,10 @@ export type CourseList = {
   courses: {
     courseId: string
     itineraryId: string
-    title: string
+    title: string | null
     date: string
     companion: string | null
-    transport: Transport
+    transport: Transport | null
     slotCount: number
     summary: string
     mealSummary: string | null

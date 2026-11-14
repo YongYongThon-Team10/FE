@@ -5,6 +5,14 @@ import {
   parseUser,
 } from '@/domain/validation'
 import type { Course, CourseSettings } from '@/domain/models'
+import { teamBackend } from './teamBackend'
+export const isAuthDemo =
+  !teamBackend.enabled && !(import.meta.env.VITE_API_BASE_URL ?? '').trim()
+// BE returns email and name, without a numeric user ID. This key is for FE state only.
+const identityUser = (identity: { email: string; name: string }) => ({
+  ...identity,
+  id: identity.email,
+})
 
 export const apiBase = (import.meta.env.VITE_API_BASE_URL ?? '')
   .trim()
@@ -88,28 +96,53 @@ export const api = {
       }),
     ),
   login: async (email: string, password: string) =>
-    parseUser(
-      await request('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email, password }),
-      }),
-    ),
+    teamBackend.enabled
+      ? identityUser(await teamBackend.signIn(email, password))
+      : parseUser(
+          await request('/auth/login', {
+            method: 'POST',
+            body: JSON.stringify({ email, password }),
+          }),
+        ),
   session: async () => {
+    if (teamBackend.enabled) {
+      const identity = teamBackend.identity()
+      return identity ? identityUser(identity) : null
+    }
     const user = await request('/auth/session')
     return user === null ? null : parseUser(user)
   },
-  logout: () => request('/auth/logout', { method: 'POST' }),
-  deleteAccount: () => request('/auth/account', { method: 'DELETE' }),
+  logout: () =>
+    teamBackend.enabled
+      ? teamBackend.logout()
+      : request('/auth/logout', { method: 'POST' }),
+  deleteAccount: () => {
+    if (teamBackend.enabled)
+      return Promise.reject(
+        new Error(
+          '현재 서버는 회원 탈퇴를 지원하지 않아요. 운영팀에 문의해 주세요.',
+        ),
+      )
+    return request('/auth/account', { method: 'DELETE' })
+  },
   register: (email: string, password: string, name: string) =>
-    request('/auth/register', {
-      method: 'POST',
-      body: JSON.stringify({ email, password, name }),
-    }),
+    teamBackend.enabled
+      ? teamBackend.signUp(email, password, name).then(identityUser)
+      : request('/auth/register', {
+          method: 'POST',
+          body: JSON.stringify({ email, password, name }),
+        }),
   resetPassword: (email: string) =>
-    request('/auth/password-reset', {
-      method: 'POST',
-      body: JSON.stringify({ email }),
-    }),
+    teamBackend.enabled
+      ? Promise.reject(
+          new Error(
+            '현재 서버는 비밀번호 재설정 메일을 지원하지 않아요. 운영팀에 문의해 주세요.',
+          ),
+        )
+      : request('/auth/password-reset', {
+          method: 'POST',
+          body: JSON.stringify({ email }),
+        }),
   inquiry: (email: string, title: string, message: string) =>
     request('/inquiries', {
       method: 'POST',

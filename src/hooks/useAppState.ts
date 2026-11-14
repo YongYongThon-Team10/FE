@@ -12,7 +12,7 @@ import { parseCourse } from '@/domain/validation'
 import { courseSnapshot } from '@/domain/snapshots'
 import { useCatalog } from '@/hooks/useCatalog'
 import { useStorage } from '@/hooks/useStorage'
-import { api, isDemo } from '@/services/api'
+import { api, isDemo, isAuthDemo } from '@/services/api'
 import { findDesignFrame } from '@/data/designFrames'
 import { designCourse, sampleSettings, sampleUser } from '@/data/scenarios'
 
@@ -136,7 +136,7 @@ export function useAppState(previewId?: string) {
   const [locating, setLocating] = useState(false)
   const [toast, setToast] = useState('')
   useEffect(() => {
-    if (!isDemo)
+    if (!isAuthDemo)
       void api
         .session()
         .then(setUser)
@@ -221,7 +221,7 @@ export function useAppState(previewId?: string) {
     contactReceipt,
     setContactReceipt,
     demoLogin: () => {
-      if (isDemo) setUser(sampleUser)
+      if (isAuthDemo) setUser(sampleUser)
     },
     clearLocalAccount: () => {
       setUser(null)
