@@ -13,7 +13,7 @@ npm run dev
 
 기본 주소는 http://localhost:5173 입니다. 개발 모드는 Figma 시연 흐름을 유지하며, 운영 빌드는 카카오 REST API의 실제 장소 검색·주변 음식점/카페 선택·하루 코스 생성·지도·브라우저 저장을 제공합니다. [실제 장소 검색·서버·배포 안내](docs/REAL_PLACE_SEARCH.md)를 확인하세요.
 
-운영 배포: https://yongin-festival-guide-2026.brian180099.chatgpt.site
+운영 배포(Vercel): https://yongin-day.vercel.app
 
 ## 화면과 동작
 

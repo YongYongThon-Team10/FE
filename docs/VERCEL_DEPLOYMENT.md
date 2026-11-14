@@ -1,5 +1,9 @@
 # Vercel 배포
 
+프로덕션: https://yongin-day.vercel.app
+
+Vercel 프로젝트: `brian180099/yongin-day`. 기존 Sites 배포는 별도로 유지한다.
+
 React/Vite 프론트는 `npm run build`로 `dist`에 빌드한다. `api/places.js`, `api/nearby.js`는 공통 `server/places.mjs`를 Vercel Node.js Functions로 실행한다. 기존 Sites용 `build:site`와 독립적인 배포 설정이다.
 
 필수 production 환경변수:
