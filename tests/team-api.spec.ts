@@ -21,9 +21,11 @@ test('실제 행사 캘린더는 월·날짜를 조회하고 공용 서버 코�
     }
     return route.fulfill({
       json: ok(
-        u.searchParams.has('month')
+        u.searchParams.get('dateFrom') !== u.searchParams.get('dateTo')
           ? {
-              month: u.searchParams.get('month'),
+              totalCount: 1,
+              page: 0,
+              size: 1,
               events: [event],
               courses: [
                 {
@@ -34,7 +36,9 @@ test('실제 행사 캘린더는 월·날짜를 조회하고 공용 서버 코�
               ],
             }
           : {
-              date: u.searchParams.get('date'),
+              totalCount: 1,
+              page: 0,
+              size: 1,
               events: [event],
               courses: [
                 { title: '다른 사용자 공용 코스', itineraryId: 'other' },

@@ -37,34 +37,48 @@ export function MonthCalendar() {
   const monthData = useResource(
     (signal) =>
       server
-        ? teamBackend.calendarMonth(month, signal).then((v) => {
-            if (
-              !Array.isArray(v?.events) ||
-              !v.events.every(
-                (e) =>
-                  typeof e.eventId === 'string' && typeof e.name === 'string',
-              )
+        ? teamBackend
+            .events(
+              {
+                dateFrom: `${month}-01`,
+                dateTo: `${month}-${new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5)), 0)).getUTCDate()}`,
+                view: 'map',
+              },
+              signal,
             )
-              throw new Error('행사 캘린더 응답을 확인해 주세요.')
-            return v
-          })
+            .then((v) => {
+              if (
+                !Array.isArray(v?.events) ||
+                !v.events.every(
+                  (e) =>
+                    typeof e.eventId === 'string' && typeof e.name === 'string',
+                )
+              )
+                throw new Error('행사 캘린더 응답을 확인해 주세요.')
+              return v
+            })
         : Promise.resolve(null),
     `${server}:${month}`,
   )
   const dayData = useResource(
     (signal) =>
       server
-        ? teamBackend.calendarDate(selected, signal).then((v) => {
-            if (
-              !Array.isArray(v?.events) ||
-              !v.events.every(
-                (e) =>
-                  typeof e.eventId === 'string' && typeof e.name === 'string',
-              )
+        ? teamBackend
+            .events(
+              { dateFrom: selected, dateTo: selected, view: 'map' },
+              signal,
             )
-              throw new Error('행사 캘린더 응답을 확인해 주세요.')
-            return v
-          })
+            .then((v) => {
+              if (
+                !Array.isArray(v?.events) ||
+                !v.events.every(
+                  (e) =>
+                    typeof e.eventId === 'string' && typeof e.name === 'string',
+                )
+              )
+                throw new Error('행사 캘린더 응답을 확인해 주세요.')
+              return v
+            })
         : Promise.resolve(null),
     `${server}:${selected}`,
   )
