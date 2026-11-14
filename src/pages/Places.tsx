@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { CategoryIcon } from '@/components/Brand'
 import { go } from '@/hooks/useRoute'
 import { searchPlaces } from '@/services/places'
+import { recommendedPlaces } from '@/services/recommendations'
 import type { PlaceResults, SearchPlace } from '@/services/places'
 import type { Category, Place } from '@/domain/models'
 import { createRealCourse } from '@/domain/realCourse'
@@ -111,7 +112,11 @@ export function Places({
   const key = `${query}\n${page}\n${attempt}`
   useEffect(() => {
     const controller = new AbortController()
-    void searchPlaces(query, page, controller.signal)
+    void (
+      embedded
+        ? recommendedPlaces(controller.signal)
+        : searchPlaces(query, page, controller.signal)
+    )
       .then((data) => {
         if (!controller.signal.aborted) setResource({ key, data })
       })
@@ -124,7 +129,7 @@ export function Places({
           })
       })
     return () => controller.abort()
-  }, [key, query, page])
+  }, [key, query, page, embedded])
   const data = resource?.key === key ? resource.data : undefined
   const error = resource?.key === key ? resource.error : undefined
   const places = useMemo(
@@ -218,7 +223,11 @@ export function Places({
           )}
           {!data.places.length && (
             <div className="empty-state">
-              <h2>검색된 장소가 없어요</h2>
+              <h2>
+                {embedded
+                  ? '대표 명소 정보를 확인 중이에요'
+                  : '검색된 장소가 없어요'}
+              </h2>
               <p>
                 장소명이나 지역명, 카페·공원 같은 키워드로 다시 검색해 주세요.
               </p>
@@ -247,7 +256,7 @@ export function Places({
               <p className="small muted">마커를 누르면 장소 정보가 열려요.</p>
             </>
           )}
-          {(embedded ? data.places.slice(0, 3) : data.places).map((place) => (
+          {data.places.map((place) => (
             <PlaceCard key={place.id} place={place} />
           ))}
           {!embedded && (

@@ -20,6 +20,86 @@ const result = (q: string, page = 1, empty = false) => ({
   source: '카카오맵',
   fetchedAt: '2026-11-14T07:00:00Z',
 })
+
+test('홈 추천은 대표 명소 본체만 표시하고 주차장과 부대시설을 제외한다', async ({
+  page,
+}) => {
+  const names = [
+    '에버랜드',
+    '한국민속촌',
+    '호암미술관',
+    '와우정사',
+    '용인농촌테마파크',
+    '한택식물원',
+  ]
+  await page.route('**/api/places?*', (route) => {
+    const q = new URL(route.request().url()).searchParams.get('q')!
+    const index = names.indexOf(q)
+    return route.fulfill({
+      json: {
+        ...result(q),
+        places: [
+          {
+            ...place(`${index + 100}`, `${q} 공영주차장`),
+            categoryGroup: 'PK6',
+            category: '교통 > 주차장',
+          },
+          {
+            ...place(`${index + 200}`, `${q} 방문자센터`),
+            categoryGroup: 'AT4',
+          },
+          {
+            ...place(`${index + 300}`, q),
+            categoryGroup:
+              q === '와우정사' ? '' : q === '호암미술관' ? 'CT1' : 'AT4',
+            category:
+              q === '와우정사'
+                ? '문화,예술 > 종교 > 불교 > 절,사찰'
+                : '여행 > 관광,명소',
+          },
+        ],
+      },
+    })
+  })
+  await page.goto('/#/')
+  await expect(page.locator('.live-place-card')).toHaveCount(6)
+  for (const name of names)
+    await expect(
+      page.getByRole('link', { name: `${name} ↗`, exact: true }),
+    ).toBeVisible()
+  await expect(page.locator('.home-recommendations')).not.toContainText(
+    '공영주차장',
+  )
+  await expect(page.locator('.home-recommendations')).not.toContainText(
+    '방문자센터',
+  )
+  await page
+    .getByRole('button', { name: '한국민속촌로 하루 코스 만들기' })
+    .click()
+  await expect(page).toHaveURL(/#\/plan\//)
+  await expect(page.locator('body')).toContainText('한국민속촌')
+})
+
+test('명소 검색 일부 실패 시 확인된 명소만 표시하며 모두 실패하면 재시도 안내', async ({
+  page,
+}) => {
+  let allFailed = false
+  await page.route('**/api/places?*', (route) => {
+    const q = new URL(route.request().url()).searchParams.get('q')!
+    return q === '에버랜드' && !allFailed
+      ? route.fulfill({ json: { ...result(q), places: [place('10', q)] } })
+      : route.fulfill({ status: 502, json: { error: '연결 실패' } })
+  })
+  await page.goto('/#/')
+  await expect(page.locator('.live-place-card')).toHaveCount(1)
+  await expect(page.locator('.live-place-card')).toContainText('에버랜드')
+  allFailed = true
+  await page.reload()
+  await expect(page.getByRole('alert')).toContainText(
+    '대표 명소 정보를 불러오지 못했어요',
+  )
+  await expect(page.locator('.live-place-card')).toHaveCount(0)
+})
 test('실제 검색 모드 홈 → 검색 → 지도 마커·상세 → 페이지 이동과 새로고침', async ({
   page,
 }) => {
@@ -35,7 +115,7 @@ test('실제 검색 모드 홈 → 검색 → 지도 마커·상세 → 페이�
   await page.goto('/#/')
   await expect(page).toHaveTitle('용인데이')
   await expect(
-    page.getByRole('heading', { name: '용인에서 가볼 만한 곳' }),
+    page.getByRole('heading', { name: '처음이라면, 용인 대표 명소' }),
   ).toBeVisible()
   await expect(page.locator('body')).not.toContainText('시연 데이터')
   await page.getByLabel('어떤 하루를 보내고 싶으세요?').fill('용인중앙시장')

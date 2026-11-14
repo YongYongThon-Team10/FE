@@ -123,7 +123,7 @@ export function Home() {
       >
         <div className="row between">
           <h2 id="home-recommendations-title">
-            {livePlaces ? '용인에서 가볼 만한 곳' : '이번 주말 추천 행사'}
+            {livePlaces ? '처음이라면, 용인 대표 명소' : '이번 주말 추천 행사'}
           </h2>
           <a
             className="small blue nowrap"
@@ -133,6 +133,12 @@ export function Home() {
             {livePlaces ? '장소 더 보기 →' : '행사 전체 보기 →'}
           </a>
         </div>
+        {livePlaces && (
+          <p className="small muted">
+            용인의 대표 명소 한 곳을 고르고, 주변 맛집과 카페를 더해 하루를
+            만들어 보세요.
+          </p>
+        )}
         {livePlaces && <Places embedded />}
         {!livePlaces &&
           data?.events
