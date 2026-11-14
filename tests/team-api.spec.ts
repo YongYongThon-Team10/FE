@@ -121,6 +121,7 @@ test('행사 빈 결과와 실패 재시도, 재조회에서 시연 행사로 �
   await expect(
     page.getByRole('heading', { name: '조회된 행사가 없어요' }),
   ).toBeVisible()
+  await expect(page.locator('.data-footer')).not.toContainText('시연 데이터')
   await expect(
     page.getByRole('link', { name: '행사 자세히 보기' }),
   ).toHaveCount(0)

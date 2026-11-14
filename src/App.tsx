@@ -11,6 +11,7 @@ import { TeamFestivals, FestivalItinerary } from '@/pages/TeamFestivals'
 import { RealCoursePlan } from '@/pages/RealCoursePlan'
 import { isRealCourse } from '@/domain/realCourse'
 import { livePlaces } from '@/services/places'
+import { teamBackend } from '@/services/teamBackend'
 import { Detail, Events, Sources } from '@/pages/Events'
 import { Configure, CourseMap, Itinerary, Saved } from '@/pages/Course'
 import {
@@ -126,6 +127,8 @@ function Shell() {
   const titles: Record<string, string> = {
     home: SERVICE_NAME,
     places: '장소 찾기',
+    festivals: id ? '행사 상세' : '축제와 행사',
+    'festival-itinerary': '행사 하루 일정',
     plan: '하루 코스 만들기',
     events: id ? '행사 상세' : '행사 찾기',
     map: '행사 지도',
@@ -516,24 +519,27 @@ function Shell() {
           )}
           {!auth && (
             <footer className="data-footer">
-              {livePlaces &&
-              ([
-                'home',
-                'places',
-                'map',
-                'plan',
-                'saved',
-                'saved-courses',
-              ].includes(section) ||
-                (course && isRealCourse(course)) ||
-                (shared && isRealCourse(shared)) ||
-                (section === 'events' && !id))
-                ? '실제 장소 정보 · 카카오맵 제공 · 운영 정보는 상세 페이지에서 확인해 주세요.'
-                : isDemo
-                  ? '시연 데이터 · 실제 행사·장소·요금과 다를 수 있어요.'
-                  : app.data
-                    ? `정보 갱신 ${new Date(app.data.updatedAt).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}`
-                    : '정보를 불러오지 못했어요.'}
+              {teamBackend.enabled &&
+              ['festivals', 'festival-itinerary'].includes(section)
+                ? '행사 서버 제공 정보 / 공식 출처에서 최신 운영 정보를 확인해 주세요.'
+                : livePlaces &&
+                    ([
+                      'home',
+                      'places',
+                      'map',
+                      'plan',
+                      'saved',
+                      'saved-courses',
+                    ].includes(section) ||
+                      (course && isRealCourse(course)) ||
+                      (shared && isRealCourse(shared)) ||
+                      (section === 'events' && !id))
+                  ? '실제 장소 정보 · 카카오맵 제공 · 운영 정보는 상세 페이지에서 확인해 주세요.'
+                  : isDemo
+                    ? '시연 데이터 · 실제 행사·장소·요금과 다를 수 있어요.'
+                    : app.data
+                      ? `정보 갱신 ${new Date(app.data.updatedAt).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}`
+                      : '정보를 불러오지 못했어요.'}
               {!isDemo && (
                 <button
                   type="button"
