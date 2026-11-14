@@ -20,3 +20,6 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm run build
+      - run: npm run test:server
+      - run: npx playwright install --with-deps chromium
+      - run: npm test
