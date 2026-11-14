@@ -16,8 +16,12 @@ export default defineConfig({
   projects: [
     {
       name: 'mobile',
-      testIgnore: /(?:remote|real-places)\.spec\.ts/,
+      testIgnore: /(?:remote|real-places|backend-contract)\.spec\.ts/,
       use: { baseURL: 'http://127.0.0.1:5173' },
+    },
+    {
+      name: 'backend-contract',
+      testMatch: /backend-contract\.spec\.ts/,
     },
     {
       name: 'real-places',
