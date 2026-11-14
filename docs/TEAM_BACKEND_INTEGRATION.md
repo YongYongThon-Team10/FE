@@ -4,6 +4,16 @@
 
 ## 준비한 코드와 적용 범위
 
+### 2026-11-15 데이터 적재 후 재검증
+
+운영 BE에서 당일(2026-11-15) 행사 150건, 2025-01-01~2027-12-31 범위 1,751건이 조회됐다. 당일 목록을 두 페이지로 읽어 150개의 서로 다른 ID를 확인했으며 수지구 필터는 53건 모두 수지구였다. 한글 데이터는 정상이다. 아래의 행사 0건 기록은 데이터 적재 전 점검 결과다.
+
+운영 FE에서 YI-0011 상세 → 기흥역 출발지 선택 → 서버 일정 생성 → 5개 슬롯 표시 및 카카오맵 링크를 확인했다. 이 점검에서 생성한 일정으로 슬롯 추가·삭제·순서 변경·교체·재생성, 공유 생성과 조회, 저장·목록·캘린더 반영과 저장 해제를 실제 BE에서 검증했다. 테스트 저장 기록은 삭제했다. 행사 편집·서버 저장 API의 정상 응답을 확인한 것이며 해당 편집 UI나 개인 서버 보관함을 제공한다는 뜻은 아니다.
+
+BE 공유 응답의 shareUrl은 `https://example.com/shared/...` 임시 주소였다. FE는 이 URL 대신 shareId로 `#/festival-shared/{shareId}` 공개 조회 화면을 연결한다. 행사 일정 화면에서 공유 링크를 만들 수 있으며, 수신자는 로그인이나 로컬 코스 없이 서버 공유 데이터를 조회한다. 공유에는 귀가 장소 등이 포함될 수 있음을 화면에 안내한다.
+
+남은 제한: 당일 행사 150건의 thumbnailUrl은 모두 비어 있었고, 시간 미제공 44건과 `00:00 ~ 00:00` 8건이 있었다. 실제 시간은 공식 출처 확인이 필요하다. 정상 인증은 테스트 계정이 없어 여전히 운영 성공 미검증이다. 사용자별 저장 권한은 적용되지 않은 공용 데모이고, meal-candidates 응답의 source는 sample이었다. 현재 FE의 실제 맛집·카페 추천은 카카오 검색을 유지한다.
+
 1. `src/services/teamBackend/client.ts`: BE 실제 경로, `{data, error}` 응답 해제, 오류 코드 보존, Bearer 인증, 401 시 토큰 재발급 및 1회 재시도, 동시 재발급 합치기, 요청 취소와 타임아웃. 서버 오류 상세와 토큰은 출력하지 않는다.
 2. `contracts.ts`: BE DTO에 맞춘 행사 목록, 검색 해석, 출발지 검색, 일정, 코스 저장 및 목록 타입. 응답 envelope와 토큰을 런타임 검사한다. 나머지 DTO 타입은 컴파일 기준이며 화면에 연결할 때 해당 화면용 런타임 검증과 표시 모델 변환을 추가해야 한다.
 3. `adapters.ts`: FE 코스 설정을 `baseEventId`, `origin`, `transport`, `timeWindow`, `wants`로 변환한다. 카카오 장소 ID, 좌표 없는 출발지, 미지원 금액 예산을 행사 생성 요청으로 잘못 보내지 않는다.
@@ -20,21 +30,21 @@
 
 ## 실제 호출 규격
 
-| 기능              | 메서드와 경로                                        | 차이 및 주의                                                                     |
-| ----------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------- |
-| 가입, 로그인      | POST `/api/v1/auth/signup`, `/signin`                | email, password, 가입은 name 추가. 응답은 accessToken, refreshToken, email, name |
-| 토큰 재발급       | POST `/api/v1/auth/reissue`                          | `{refreshToken}`. 갱신된 AT와 RT를 함께 교체                                     |
-| 로그아웃          | POST `/api/v1/auth/logout`                           | Bearer AT 필요                                                                   |
-| 행사 목록         | GET `/api/events`                                    | dateFrom 필수. page는 0부터, district와 dong은 콤마 구분. map은 전체 결과        |
-| 문장 해석         | POST `/api/search/parse`                             | `{query, today}`. parsed=false도 200                                             |
-| 출발지 검색       | GET `/api/places/search?query=...`                   | name, address, lat, lng만 제공. 관광지 추천이나 주변 카페 API가 아님             |
-| 관심 행사         | PUT 또는 DELETE `/api/me/favorites/{eventId}`        | 로그인 필요                                                                      |
-| 일정 생성         | POST `/api/itineraries`                              | BE DB의 YI 행사 ID와 출발지 좌표 필요. 카카오 장소를 기준으로 생성 불가          |
-| 일정 조회, 재추천 | GET `/api/itineraries/{id}`, POST `/{id}/regenerate` | 재추천은 변경한 조건만 보냄                                                      |
-| 방문 순서 수정    | PATCH `/api/itineraries/{id}/slots/order`            | `{slotIds}`. return 슬롯 제외                                                    |
-| 코스 저장, 목록   | POST 또는 GET `/api/me/courses`                      | 저장은 `{itineraryId, title?}`. 현재 공통 데모 소유자 사용                       |
-| 코스 삭제         | DELETE `/api/me/courses/{courseId}`                  | itineraryId가 아닌 저장 응답의 courseId                                          |
-| 공유              | POST `/api/itineraries/{id}/share`                   | shareId, shareUrl, title. BE 공유 URL과 FE 수신 화면 연결은 후속 작업            |
+| 기능              | 메서드와 경로                                        | 차이 및 주의                                                                         |
+| ----------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| 가입, 로그인      | POST `/api/v1/auth/signup`, `/signin`                | email, password, 가입은 name 추가. 응답은 accessToken, refreshToken, email, name     |
+| 토큰 재발급       | POST `/api/v1/auth/reissue`                          | `{refreshToken}`. 갱신된 AT와 RT를 함께 교체                                         |
+| 로그아웃          | POST `/api/v1/auth/logout`                           | Bearer AT 필요                                                                       |
+| 행사 목록         | GET `/api/events`                                    | dateFrom 필수. page는 0부터, district와 dong은 콤마 구분. map은 전체 결과            |
+| 문장 해석         | POST `/api/search/parse`                             | `{query, today}`. parsed=false도 200                                                 |
+| 출발지 검색       | GET `/api/places/search?query=...`                   | name, address, lat, lng만 제공. 관광지 추천이나 주변 카페 API가 아님                 |
+| 관심 행사         | PUT 또는 DELETE `/api/me/favorites/{eventId}`        | 로그인 필요                                                                          |
+| 일정 생성         | POST `/api/itineraries`                              | BE DB의 YI 행사 ID와 출발지 좌표 필요. 카카오 장소를 기준으로 생성 불가              |
+| 일정 조회, 재추천 | GET `/api/itineraries/{id}`, POST `/{id}/regenerate` | 재추천은 변경한 조건만 보냄                                                          |
+| 방문 순서 수정    | PATCH `/api/itineraries/{id}/slots/order`            | `{slotIds}`. return 슬롯 제외                                                        |
+| 코스 저장, 목록   | POST 또는 GET `/api/me/courses`                      | 저장은 `{itineraryId, title?}`. 현재 공통 데모 소유자 사용                           |
+| 코스 삭제         | DELETE `/api/me/courses/{courseId}`                  | itineraryId가 아닌 저장 응답의 courseId                                              |
+| 공유              | POST `/api/itineraries/{id}/share`                   | shareId, shareUrl, title. 임시 shareUrl 대신 FE `#/festival-shared/{shareId}`로 연결 |
 
 호출 예시 (개발 코드):
 
@@ -80,18 +90,18 @@ const itinerary = await teamBackend.createItinerary(input, abortSignal)
 3. 실제 가입, 로그인 및 재발급을 검증하고 계정 UI를 연결한다.
 4. BE 행사 기반 일정의 표시 및 편집 어댑터를 연결한다. 카카오 장소 흐름은 별도 계약 확정 후 연결한다.
 5. 사용자별 소유권이 구현된 서버 저장을 연결한다. 두 계정 격리, 새로고침과 재로그인, 실패 및 재시도를 검증한다.
-6. 공유 링크 수신 화면을 연결하고 검증된 변경만 Vercel 운영 배포에 반영한다.
+6. 공유 링크 수신 화면은 연결했다. 검증된 변경만 Vercel 운영 배포에 반영한다.
 
 ## 톡방 전달 문구
 
-용인데이 FE는 https://yongin-day.vercel.app 에서 확인할 수 있습니다. BE dev(521da004) 기준으로 API 호출 모듈과 인증 및 토큰 재발급 처리를 준비했습니다. 아직 실제 서버에 연결한 상태는 아닙니다.
+용인데이 FE는 https://yongin-day.vercel.app 에서 확인할 수 있습니다. BE 데이터 적재 후 당일 행사 150건, 2025~2027년 범위 1,751건을 확인했습니다. 실제 행사 상세와 출발지 검색, 서버 일정 생성도 운영 FE에서 정상 동작했습니다. 새로 만든 테스트 일정으로 편집·재생성·공유·저장 API도 검증했고 테스트 저장 기록은 삭제했습니다.
 
 연동 시작을 위해 아래 정보 부탁드립니다.
 
-1. HTTPS BE 운영 및 테스트 API 주소, Swagger 주소, 실제 배포 브랜치와 커밋
-2. 테스트 계정(비밀번호는 개인 전달 또는 직접 가입), 테스트 가능한 행사 ID와 날짜
-3. FE 도메인 https://yongin-day.vercel.app CORS 허용
-4. DB 및 행사 데이터 적재, 카카오 REST 키와 AI 키의 서버 설정 여부
+1. 정상 로그인·재발급 검증용 테스트 계정 또는 테스트 환경
+2. 실제 배포 브랜치와 커밋, 사용자별 일정·코스 소유권 적용 계획
+3. 행사 thumbnailUrl/imageUrl 및 시간 데이터 보완 계획
+4. 공유 API가 반환하는 example.com 임시 URL을 실제 FE 주소로 바꾸는 설정. FE는 shareId를 사용해 실제 공유 화면을 제공하도록 보완했습니다.
 
 코드상 확인이 필요한 부분도 있습니다.
 
@@ -100,4 +110,4 @@ const itinerary = await teamBackend.createItinerary(input, abortSignal)
 3. meal-candidates는 샘플로 확인했습니다. 실제 음식점 및 카페 추천은 현재 카카오 검색을 유지하고, BE 통합 방향을 맞추면 좋겠습니다.
 4. 새로고침 후 로그인 유지 및 내 정보 조회 방식도 확인 부탁드립니다.
 
-정보가 준비되면 공개 조회부터 로그인, 일정, 개인 저장 순서로 연동 검증하겠습니다. API 키나 DB 접속 비밀번호를 단체방에 올릴 필요는 없습니다.
+공개 행사 조회와 일정 API의 실제 성공 흐름은 확인했습니다. 정상 인증과 사용자별 저장 격리는 테스트 계정 및 소유권 적용 후 검증하겠습니다. API 키나 DB 접속 비밀번호를 단체방에 올릴 필요는 없습니다.

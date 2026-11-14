@@ -5,6 +5,7 @@ import type {
   EventList,
   Itinerary,
   OriginPlace,
+  SharedItinerary,
 } from '@/services/teamBackend/contracts'
 import { PlacePhoto } from '@/components/PlacePhoto'
 import { dateKey } from '@/domain/planning'
@@ -461,6 +462,30 @@ function FestivalGenerator({ event }: { event: EventDetail }) {
   )
 }
 export function FestivalItinerary({ id }: { id: string }) {
+  const [shareId, setShareId] = useState('')
+  const [sharing, setSharing] = useState(false)
+  const [shareError, setShareError] = useState('')
+  const share = async () => {
+    setSharing(true)
+    setShareError('')
+    try {
+      const result = await teamBackend.share(id)
+      if (
+        typeof result?.shareId !== 'string' ||
+        !/^[A-Za-z0-9_-]{1,100}$/.test(result.shareId)
+      )
+        throw new Error('공유 응답을 확인해 주세요.')
+      // The BE currently returns an example.com placeholder in shareUrl.
+      // Route the server share ID through our own public, read-only screen.
+      setShareId(result.shareId)
+    } catch (e) {
+      setShareError(
+        e instanceof Error ? e.message : '공유 링크를 만들지 못했어요.',
+      )
+    } finally {
+      setSharing(false)
+    }
+  }
   const { data, error, retry } = useResource<Itinerary>(
     (signal) =>
       teamBackend.itinerary(id, signal).then((v) => {
@@ -503,8 +528,110 @@ export function FestivalItinerary({ id }: { id: string }) {
           )}
         </article>
       ))}
+      <section className="panel stack">
+        <h2>함께 볼 일정 공유하기</h2>
+        <p className="small muted">
+          링크를 아는 사람은 일정의 장소와 시간을 볼 수 있어요. 귀가 장소 등
+          공개할 정보를 확인한 뒤 공유해 주세요.
+        </p>
+        {!shareId && (
+          <button
+            className="secondary"
+            disabled={sharing}
+            onClick={() => void share()}
+          >
+            {sharing ? '공유 링크 만드는 중…' : '행사 일정 공유 링크 만들기'}
+          </button>
+        )}
+        {shareId && (
+          <>
+            <label className="field">
+              공유 주소
+              <input
+                readOnly
+                value={`${window.location.origin}${window.location.pathname}#/festival-shared/${encodeURIComponent(shareId)}`}
+                onFocus={(e) => e.target.select()}
+              />
+            </label>
+            <a
+              className="secondary"
+              href={`#/festival-shared/${encodeURIComponent(shareId)}`}
+            >
+              공유 일정 열기
+            </a>
+          </>
+        )}
+        {shareError && (
+          <p className="error" role="alert">
+            {shareError}
+          </p>
+        )}
+      </section>
       <a href="#/festivals" className="secondary">
         행사 목록으로
+      </a>
+    </div>
+  )
+}
+
+export function FestivalShared({ id }: { id: string }) {
+  const { data, error, retry } = useResource<SharedItinerary>(
+    (signal) =>
+      teamBackend.shared(id, signal).then((value) => {
+        const text = (field: unknown) =>
+          field == null || typeof field === 'string'
+        if (
+          !value ||
+          value.shareId !== id ||
+          typeof value.date !== 'string' ||
+          !text(value.title) ||
+          !Array.isArray(value.slots) ||
+          !value.slots.every(
+            (s) =>
+              s &&
+              Number.isInteger(s.order) &&
+              typeof s.type === 'string' &&
+              [
+                s.title,
+                s.startTime,
+                s.endTime,
+                s.costText,
+                s.place?.name,
+              ].every(text),
+          )
+        )
+          throw new Error('공유 일정 응답을 확인해 주세요.')
+        return value
+      }),
+    id,
+  )
+  if (!data) return <Status error={error} retry={retry} />
+  return (
+    <div className="stack">
+      <h1>{data.title ?? '함께하는 행사 일정'}</h1>
+      <p>{data.date}</p>
+      <p className="small muted">
+        공유된 일정입니다. 제안된 시간과 실제 운영 시간은 다를 수 있으니 방문 전
+        공식 출처에서 확인해 주세요.
+      </p>
+      <PlacePhoto
+        name={data.title ?? '행사 일정'}
+        image={{ imageUrl: data.coverImageUrl }}
+      />
+      {[...data.slots]
+        .sort((a, b) => a.order - b.order)
+        .map((s, index) => (
+          <article className="panel stack" key={`${s.order}-${index}`}>
+            <h2>{s.title ?? '장소 미정'}</h2>
+            <p>
+              {s.startTime ?? '시간 미정'} ~ {s.endTime ?? '시간 미정'}
+            </p>
+            <p>{s.place?.name ?? '장소 미정'}</p>
+            <p>{s.costText ?? '요금 정보 없음'}</p>
+          </article>
+        ))}
+      <a className="secondary" href="#/festivals">
+        나도 행사 찾아보기
       </a>
     </div>
   )

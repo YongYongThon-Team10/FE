@@ -126,3 +126,100 @@ test('행사 빈 결과와 실패 재시도, 재조회에서 시연 행사로 �
     page.getByRole('link', { name: '행사 자세히 보기' }),
   ).toHaveCount(0)
 })
+
+test('BE의 임시 공유 URL 대신 FE 링크를 만들고 다른 세션에서 서버 공유 일정을 연다', async ({
+  page,
+  browser,
+}) => {
+  const shareId = examples['21'].data.shareId
+  const handle = async (route: import('@playwright/test').Route) => {
+    const path = new URL(route.request().url()).pathname
+    if (path.endsWith('/share')) {
+      expect(route.request().method()).toBe('POST')
+      return route.fulfill({
+        json: {
+          ...examples['21'],
+          data: {
+            ...examples['21'].data,
+            shareUrl: 'https://example.com/placeholder',
+          },
+        },
+      })
+    }
+    if (path.startsWith('/api/shared/'))
+      return route.fulfill({ json: examples['22'] })
+    if (path.startsWith('/api/itineraries/'))
+      return route.fulfill({ json: examples['12'] })
+    return route.fulfill({ status: 404 })
+  }
+  await page.route('https://be.example.test/**', handle)
+  await page.goto(`/#/festival-itinerary/${examples['12'].data.itineraryId}`)
+  await page
+    .getByRole('button', { name: '행사 일정 공유 링크 만들기', exact: true })
+    .click()
+  const address = await page
+    .getByLabel('공유 주소', { exact: true })
+    .inputValue()
+  expect(address).toBe(`http://127.0.0.1:5176/#/festival-shared/${shareId}`)
+  const other = await browser.newContext()
+  try {
+    const receiver = await other.newPage()
+    await receiver.route('https://be.example.test/**', handle)
+    await receiver.goto(address)
+    await expect(receiver.getByRole('heading', { level: 1 })).toHaveText(
+      examples['22'].data.title,
+    )
+    await expect(receiver.locator('main article')).toHaveCount(
+      examples['22'].data.slots.length,
+    )
+    await expect(
+      receiver.getByRole('link', { name: '나도 행사 찾아보기' }),
+    ).toBeVisible()
+    await expect(receiver.locator('.data-footer')).not.toContainText(
+      '시연 데이터',
+    )
+  } finally {
+    await other.close()
+  }
+})
+
+test('공유 생성 실패는 재시도하며 잘못된 공유 응답은 화면 오류로 복구한다', async ({
+  page,
+}) => {
+  let fail = true
+  await page.route('https://be.example.test/**', (route) => {
+    const path = new URL(route.request().url()).pathname
+    if (path.endsWith('/share'))
+      return fail
+        ? route.fulfill({
+            status: 503,
+            json: { data: null, error: { code: 'C500', message: 'internal' } },
+          })
+        : route.fulfill({ json: examples['21'] })
+    if (path.startsWith('/api/shared/'))
+      return route.fulfill({
+        json: {
+          data: {
+            ...examples['22'].data,
+            slots: [{ order: 1, type: 'event', title: { invalid: true } }],
+          },
+          error: { code: null, message: null },
+        },
+      })
+    return route.fulfill({ json: examples['12'] })
+  })
+  await page.goto(`/#/festival-itinerary/${examples['12'].data.itineraryId}`)
+  await page
+    .getByRole('button', { name: '행사 일정 공유 링크 만들기', exact: true })
+    .click()
+  await expect(page.getByRole('alert')).toContainText('백엔드 연결에 실패')
+  fail = false
+  await page
+    .getByRole('button', { name: '행사 일정 공유 링크 만들기', exact: true })
+    .click()
+  await page.getByRole('link', { name: '공유 일정 열기', exact: true }).click()
+  await expect(page.getByRole('alert')).toContainText('공유 일정 응답을 확인')
+  await expect(
+    page.getByRole('button', { name: '다시 불러오기' }),
+  ).toBeVisible()
+})

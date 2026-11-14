@@ -7,7 +7,11 @@ import { PageContainer } from '@/components/PageContainer'
 import { NavIcon, Brand } from '@/components/Brand'
 import { Home } from '@/pages/Home'
 import { Places } from '@/pages/Places'
-import { TeamFestivals, FestivalItinerary } from '@/pages/TeamFestivals'
+import {
+  TeamFestivals,
+  FestivalItinerary,
+  FestivalShared,
+} from '@/pages/TeamFestivals'
 import { RealCoursePlan } from '@/pages/RealCoursePlan'
 import { isRealCourse } from '@/domain/realCourse'
 import { livePlaces } from '@/services/places'
@@ -129,6 +133,7 @@ function Shell() {
     places: '장소 찾기',
     festivals: id ? '행사 상세' : '축제와 행사',
     'festival-itinerary': '행사 하루 일정',
+    'festival-shared': '함께하는 행사 일정',
     plan: '하루 코스 만들기',
     events: id ? '행사 상세' : '행사 찾기',
     map: '행사 지도',
@@ -203,6 +208,9 @@ function Shell() {
       break
     case 'festival-itinerary':
       content = <FestivalItinerary key={id} id={id} />
+      break
+    case 'festival-shared':
+      content = <FestivalShared key={id} id={id} />
       break
     case 'conditions':
       content = <SearchConditions />
@@ -520,7 +528,9 @@ function Shell() {
           {!auth && (
             <footer className="data-footer">
               {teamBackend.enabled &&
-              ['festivals', 'festival-itinerary'].includes(section)
+              ['festivals', 'festival-itinerary', 'festival-shared'].includes(
+                section,
+              )
                 ? '행사 서버 제공 정보 / 공식 출처에서 최신 운영 정보를 확인해 주세요.'
                 : livePlaces &&
                     ([
