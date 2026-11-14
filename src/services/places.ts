@@ -2,7 +2,8 @@ export const placesApiBase = (import.meta.env.VITE_PLACES_API_BASE ?? '')
   .trim()
   .replace(/\/$/, '')
 export const livePlaces = Boolean(placesApiBase)
-export type SearchPlace = {
+import type { ImageFields } from '@/domain/images'
+export type SearchPlace = ImageFields & {
   id: string
   name: string
   category: string

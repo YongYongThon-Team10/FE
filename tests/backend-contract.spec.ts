@@ -5,6 +5,7 @@ import {
 } from '../src/services/teamBackend/client'
 import { itineraryInput } from '../src/services/teamBackend/adapters'
 import type { CourseSettings } from '../src/domain/models'
+import { photoCandidates, safeImageUrl } from '../src/domain/images'
 
 const ok = (data: unknown) =>
   Response.json({ data, error: { code: null, message: null } })
@@ -20,6 +21,33 @@ const unauthorized = () =>
     { status: 401 },
   )
 const baseUrl = 'https://backend.example.com'
+
+test('이미지 필드 우선순위와 안전한 URL, 명소 이름 정확 일치', () => {
+  expect(
+    photoCandidates('에버랜드', {
+      imageUrl: 'https://cdn.example.com/image.jpg',
+      thumbnailUrl: 'https://cdn.example.com/thumb.jpg',
+    }).map((photo) => photo.src),
+  ).toEqual([
+    'https://cdn.example.com/image.jpg',
+    'https://cdn.example.com/thumb.jpg',
+    '/landmarks/everland.webp',
+  ])
+  for (const url of [
+    'javascript:alert(1)',
+    'data:image/svg+xml,hello',
+    '//untrusted.test/img',
+    '/\\untrusted.test/img',
+    'http://cdn.example.com/img',
+    'https://user:password@cdn.example.com/img',
+  ])
+    expect(safeImageUrl(url)).toBeUndefined()
+  expect(photoCandidates('에버랜드 주차장')).toEqual([])
+  expect(photoCandidates('constructor')).toEqual([])
+  expect(
+    photoCandidates('에버랜드', { imageUrl: '/landmarks/everland.webp' }),
+  ).toHaveLength(1)
+})
 
 test('BE 로그인 규격과 메모리 인증, 토큰 없는 호출 및 로그아웃', async () => {
   const calls: { path: string; init?: RequestInit }[] = []

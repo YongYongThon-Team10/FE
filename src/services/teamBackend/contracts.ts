@@ -1,3 +1,4 @@
+import type { ImageFields } from '@/domain/images'
 // BE dev 521da004 (2026-11-14). Paths include /api; base URL is the server origin.
 export type Companion = 'alone' | 'couple' | 'friends' | 'family' | 'kids'
 export type Transport = 'car' | 'transit' | 'walk'
@@ -22,7 +23,7 @@ export type EventQuery = {
   page?: number
   size?: number
 }
-export type EventItem = {
+export type EventItem = ImageFields & {
   eventId: string
   name: string
   summary: string | null

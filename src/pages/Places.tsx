@@ -7,6 +7,7 @@ import type { PlaceResults, SearchPlace } from '@/services/places'
 import type { Category, Place } from '@/domain/models'
 import { createRealCourse } from '@/domain/realCourse'
 import { useApp } from '@/state/context'
+import { PlacePhoto } from '@/components/PlacePhoto'
 const PlaceMap = lazy(() => import('@/components/PlaceMap'))
 const category = (place: SearchPlace): Category =>
   (
@@ -27,7 +28,9 @@ function mapPlace(place: SearchPlace, fetchedAt: string): Place {
     district: '',
     address: place.roadAddress || place.address,
     location: place.location,
-    imageUrl: null,
+    imageUrl: place.imageUrl ?? null,
+    thumbnailUrl: place.thumbnailUrl,
+    imageCredit: place.imageCredit,
     price: null,
     durationMinutes: 0,
     openingHours: '',
@@ -43,6 +46,7 @@ function PlaceCard({ place }: { place: SearchPlace }) {
   const app = useApp()
   return (
     <article className="panel live-place-card">
+      <PlacePhoto name={place.name} image={place} className="landmark-photo" />
       <div className="row">
         <CategoryIcon category={category(place)} size={28} />
         <div className="grow">

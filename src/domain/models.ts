@@ -1,3 +1,4 @@
+import type { ImageFields } from './images'
 export const categories = [
   'park',
   'food',
@@ -30,7 +31,7 @@ export type Source = {
   updatedAt: string
   isDemo: boolean
 }
-export type Place = {
+export type Place = ImageFields & {
   id: string
   name: string
   description: string

@@ -9,6 +9,8 @@ export function placeSnapshot(p: Place): Place {
     address: p.address,
     location: p.location,
     imageUrl: p.imageUrl,
+    ...(p.thumbnailUrl ? { thumbnailUrl: p.thumbnailUrl } : {}),
+    ...(p.imageCredit ? { imageCredit: p.imageCredit } : {}),
     price: p.price,
     durationMinutes: p.durationMinutes,
     openingHours: p.openingHours,

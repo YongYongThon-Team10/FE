@@ -63,6 +63,16 @@ test('홈 추천은 대표 명소 본체만 표시하고 주차장과 부대시�
   })
   await page.goto('/#/')
   await expect(page.locator('.live-place-card')).toHaveCount(6)
+  for (const image of await page
+    .locator('.live-place-card .place-photo img')
+    .all()) {
+    await image.scrollIntoViewIfNeeded()
+    await expect
+      .poll(() =>
+        image.evaluate((img) => (img as HTMLImageElement).naturalWidth),
+      )
+      .toBeGreaterThan(0)
+  }
   for (const name of names)
     await expect(
       page.getByRole('link', { name: `${name} ↗`, exact: true }),
@@ -78,6 +88,100 @@ test('홈 추천은 대표 명소 본체만 표시하고 주차장과 부대시�
     .click()
   await expect(page).toHaveURL(/#\/plan\//)
   await expect(page.locator('body')).toContainText('한국민속촌')
+  await expect(
+    page.getByRole('img', { name: '한국민속촌 대표 사진' }),
+  ).toHaveAttribute('src', '/landmarks/folk-village.webp')
+  await page.reload()
+  await expect(
+    page.getByRole('img', { name: '한국민속촌 대표 사진' }),
+  ).toBeVisible()
+  const draft = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('yongin.draft.v1')!),
+  )
+  expect(draft.stops[0].place.imageUrl).toBe('/landmarks/folk-village.webp')
+  expect(draft.stops[0].place.imageCredit.author).toBe('ChenGui')
+})
+
+test('BE 이미지 우선, 원본 실패 시 썸네일, 둘 다 실패 시 명소 사진으로 복구', async ({
+  page,
+}) => {
+  let failPrimary = false
+  let failThumbnail = false
+  await page.route('**/api/places?*', (route) =>
+    route.fulfill({
+      json: {
+        ...result('에버랜드'),
+        places: [
+          {
+            ...place('10', '에버랜드'),
+            imageUrl: 'https://images.example.test/full.webp',
+            thumbnailUrl: 'https://images.example.test/thumb.webp',
+            imageCredit: {
+              author: 'BE 제공 사진',
+              sourceUrl: 'https://example.test/source',
+            },
+          },
+        ],
+      },
+    }),
+  )
+  await page.route('https://images.example.test/**', (route) => {
+    const fail = route.request().url().endsWith('/full.webp')
+      ? failPrimary
+      : failThumbnail
+    return fail
+      ? route.fulfill({ status: 404 })
+      : route.fulfill({
+          path: 'public/landmarks/hoam.webp',
+          contentType: 'image/webp',
+        })
+  })
+  await page.goto('/#/places?q=에버랜드')
+  const image = page.getByRole('img', { name: '에버랜드 대표 사진' })
+  await expect(image).toHaveAttribute(
+    'src',
+    'https://images.example.test/full.webp',
+  )
+  await expect(page.locator('.photo-credit')).toContainText('BE 제공 사진')
+  failPrimary = true
+  await page.reload()
+  await expect(image).toHaveAttribute(
+    'src',
+    'https://images.example.test/thumb.webp',
+  )
+  failThumbnail = true
+  await page.reload()
+  await expect(image).toHaveAttribute('src', '/landmarks/everland.webp')
+  await expect(page.locator('.photo-credit')).toContainText('Wikiwater2020')
+  await expect(page.locator('.photo-credit')).not.toContainText('BE 제공 사진')
+})
+
+test('알 수 없는 장소의 사진 실패는 깨진 이미지 없이 검색과 코스 선택을 유지', async ({
+  page,
+}) => {
+  await page.route('**/api/places?*', (route) =>
+    route.fulfill({
+      json: {
+        ...result('검증 장소'),
+        places: [
+          {
+            ...place('12', '검증 장소'),
+            imageUrl: 'https://images.example.test/missing.webp',
+          },
+        ],
+      },
+    }),
+  )
+  await page.route('https://images.example.test/**', (route) =>
+    route.fulfill({ status: 404 }),
+  )
+  await page.goto('/#/places?q=검증장소')
+  await expect(page.locator('.live-place-card')).toContainText('검증 장소')
+  await expect(page.locator('.live-place-card .place-photo img')).toHaveCount(0)
+  await page
+    .getByRole('button', { name: '검증 장소로 하루 코스 만들기' })
+    .click()
+  await expect(page).toHaveURL(/#\/plan\//)
 })
 
 test('명소 검색 일부 실패 시 확인된 명소만 표시하며 모두 실패하면 재시도 안내', async ({

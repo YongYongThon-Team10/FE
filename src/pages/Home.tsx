@@ -139,6 +139,11 @@ export function Home() {
             만들어 보세요.
           </p>
         )}
+        {livePlaces && (
+          <p className="tiny muted">
+            사진은 촬영 당시 모습으로 현재 계절과 다를 수 있어요.
+          </p>
+        )}
         {livePlaces && <Places embedded />}
         {!livePlaces &&
           data?.events

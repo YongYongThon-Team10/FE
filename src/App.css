@@ -438,6 +438,58 @@
   padding: 19px;
   background: #fff;
 }
+.place-photo {
+  margin: 0;
+  min-width: 0;
+}
+.place-photo > img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 3 / 2;
+  object-fit: cover;
+  border-radius: 12px;
+  background: #edf0f7;
+}
+.photo-credit {
+  margin-top: 6px;
+  font-size: 10px;
+  line-height: 1.6;
+  color: #70768a;
+  overflow-wrap: anywhere;
+}
+.photo-credit a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.live-place-card > .landmark-photo {
+  margin-bottom: 16px;
+}
+.photo-placeholder {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 3 / 2;
+  border-radius: 12px;
+  background: #edf0f7;
+  color: #6a7287;
+  font-size: 12px;
+}
+.stop-photo {
+  width: 100px;
+  flex-shrink: 0;
+}
+.stop-photo > img {
+  height: 82px;
+}
+.stop-photo .photo-credit {
+  font-size: 9px;
+}
+.saved-photo > img {
+  max-height: 210px;
+}
+.detail-photo > img {
+  aspect-ratio: 16 / 10;
+}
 .tinted {
   background: var(--background);
 }

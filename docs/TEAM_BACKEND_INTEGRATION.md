@@ -58,6 +58,8 @@ const itinerary = await teamBackend.createItinerary(input, abortSignal)
 
 ## BE 담당자에게 받을 정보
 
+이미지 표시 계층도 준비되어 있다. `imageUrl`과 `thumbnailUrl`, 선택 출처 필드 `imageCredit`를 전달하면 BE 사진을 우선 표시한다. [사진 규격과 출처](PLACE_IMAGES.md)를 참고한다. 이미지 URL과 재사용 가능한 저작자 정보도 함께 요청한다.
+
 1. 브라우저에서 접근 가능한 HTTPS 운영 및 테스트 API 원점, Swagger URL, 실제 배포 브랜치와 커밋.
 2. 테스트 계정 및 역할. 비밀번호는 단체방 대신 별도 안전한 경로로 전달받는다. 가능하면 테스트 환경에서 직접 가입한다.
 3. 실제 데이터가 있는 행사 ID, 조회 가능한 날짜, 일정 생성 요청 및 성공 응답 예시. DB 스키마와 행사 적재 완료 여부.

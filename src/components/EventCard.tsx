@@ -3,6 +3,7 @@ import { distanceKm, eventDate, priceText } from '@/domain/planning'
 import { safeUrl } from '@/domain/validation'
 import { CategoryIcon } from './Brand'
 import { go } from '@/hooks/useRoute'
+import { PlacePhoto } from './PlacePhoto'
 
 export function EventImage({
   event,
@@ -11,6 +12,15 @@ export function EventImage({
   event: Event
   detail?: boolean
 }) {
+  if (!event.source.isDemo)
+    return (
+      <PlacePhoto
+        name={event.name}
+        image={event}
+        className={detail ? 'detail-photo' : 'event-photo'}
+        placeholder
+      />
+    )
   const poster = /Image[467]\.png$/.test(event.imageUrl ?? '')
   return (
     <div
@@ -65,9 +75,13 @@ export function EventCard({
   const path = `/events/${encodeURIComponent(event.id)}`
   return (
     <article className="event-card">
-      <a href={`#${path}`}>
+      {event.source.isDemo ? (
+        <a href={`#${path}`}>
+          <EventImage event={event} />
+        </a>
+      ) : (
         <EventImage event={event} />
-      </a>
+      )}
       <div className="event-card-body">
         <EventBadges event={event} />
         <h3>

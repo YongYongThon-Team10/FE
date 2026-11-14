@@ -1,6 +1,7 @@
 import type { Category, Course, Place } from './models'
 import type { SearchPlace } from '@/services/places'
 import { dateKey, recalculate } from './planning'
+import { photoCandidates } from './images'
 export const isRealCourse = (course: Course) =>
   course.eventId.startsWith('kakao:') && !course.isDemo
 export const placeCategory = (place: SearchPlace): Category =>
@@ -25,7 +26,9 @@ export function realPlace(
     district: place.address.match(/용인시\s+(\S+구)/)?.[1] ?? '',
     address: place.roadAddress || place.address,
     location: place.location,
-    imageUrl: null,
+    imageUrl: place.imageUrl ?? null,
+    thumbnailUrl: place.thumbnailUrl,
+    imageCredit: place.imageCredit,
     price: null,
     durationMinutes:
       place.categoryGroup === 'FD6' || place.categoryGroup === 'CE7' ? 60 : 120,
@@ -40,6 +43,11 @@ export function realPlace(
 }
 export function createRealCourse(place: SearchPlace): Course {
   const anchor = realPlace(place)
+  const photo = photoCandidates(anchor.name, anchor)[0]
+  if (photo) {
+    anchor.imageUrl = photo.src
+    anchor.imageCredit = photo.credit
+  }
   return recalculate({
     id: crypto.randomUUID(),
     name: `${place.name} 중심 하루`,

@@ -19,6 +19,7 @@ import { api, isDemo } from '@/services/api'
 import { calendarDemoEvents, designCourse } from '@/data/scenarios'
 import { isRealCourse } from '@/domain/realCourse'
 import { livePlaces } from '@/services/places'
+import { PlacePhoto } from '@/components/PlacePhoto'
 const PlaceMap = lazy(() => import('@/components/PlaceMap'))
 
 function defaultSettings(
@@ -436,7 +437,14 @@ export function Itinerary({
             }}
           >
             <div className="row stop-main">
-              {stop.place && safeUrl(stop.place.imageUrl) ? (
+              {real && stop.place ? (
+                <PlacePhoto
+                  name={stop.place.name}
+                  image={stop.place}
+                  className="stop-photo"
+                  placeholder
+                />
+              ) : stop.place && safeUrl(stop.place.imageUrl) ? (
                 <img
                   className="stop-image"
                   src={safeUrl(stop.place.imageUrl)}
@@ -901,12 +909,20 @@ export function Saved({ standalone = false }: { standalone?: boolean }) {
             {!standalone && (
               <p className="eyebrow">저장한 코스 {courses.length}개</p>
             )}
-            {c.stops[0]?.place?.imageUrl && (
-              <img
-                className="saved-image"
-                src={safeUrl(c.stops[0].place.imageUrl)}
-                alt={c.name}
+            {isRealCourse(c) && c.stops[0]?.place ? (
+              <PlacePhoto
+                name={c.stops[0].place.name}
+                image={c.stops[0].place}
+                className="saved-photo"
               />
+            ) : (
+              c.stops[0]?.place?.imageUrl && (
+                <img
+                  className="saved-image"
+                  src={safeUrl(c.stops[0].place.imageUrl)}
+                  alt={c.name}
+                />
+              )
             )}
             <div className="row">
               <CategoryIcon category="park" size={28} />

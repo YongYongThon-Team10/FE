@@ -1,6 +1,36 @@
 import { expect, test } from '@playwright/test'
 import { demoCatalog } from '../src/data/demo'
 
+test('실제 행사 카드와 상세는 BE thumbnailUrl을 사진으로 표시한다', async ({
+  page,
+}) => {
+  const catalog = structuredClone(demoCatalog)
+  catalog.events = [catalog.events[0]]
+  catalog.events[0].name = 'BE 이미지 행사'
+  catalog.events[0].imageUrl = null
+  catalog.events[0].thumbnailUrl = 'https://images.example.test/event.webp'
+  catalog.events[0].source.isDemo = false
+  await page.route('https://images.example.test/**', (route) =>
+    route.fulfill({
+      path: 'public/landmarks/hoam.webp',
+      contentType: 'image/webp',
+    }),
+  )
+  await page.route('http://127.0.0.1:5199/api/**', (route) =>
+    route.fulfill({
+      json: route.request().url().endsWith('/auth/session') ? null : catalog,
+    }),
+  )
+  await page.goto('/#/events')
+  await expect(
+    page.getByRole('img', { name: 'BE 이미지 행사 대표 사진' }),
+  ).toHaveAttribute('src', 'https://images.example.test/event.webp')
+  await page.getByRole('link', { name: 'BE 이미지 행사', exact: true }).click()
+  await expect(
+    page.getByRole('img', { name: 'BE 이미지 행사 대표 사진' }),
+  ).toHaveAttribute('src', 'https://images.example.test/event.webp')
+})
+
 test('서버 갱신·실패·재시도에 목록과 마커가 동기화되고 시연값으로 대체되지 않는다', async ({
   page,
 }) => {

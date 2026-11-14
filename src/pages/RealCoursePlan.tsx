@@ -6,6 +6,7 @@ import { realPlace } from '@/domain/realCourse'
 import { recalculate } from '@/domain/planning'
 import { useApp } from '@/state/context'
 import { go } from '@/hooks/useRoute'
+import { PlacePhoto } from '@/components/PlacePhoto'
 
 type NearbyState = {
   key: string
@@ -205,6 +206,7 @@ export function RealCoursePlan({ course }: { course: Course }) {
     <>
       <h1 className="blue">실제 장소로 하루를 연결해요</h1>
       <section className="panel stack">
+        <PlacePhoto name={anchor.name} image={anchor} />
         <p className="eyebrow">선택한 장소</p>
         <h2>{anchor.name}</h2>
         <p className="small">{anchor.address}</p>
