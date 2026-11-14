@@ -5,6 +5,8 @@ import { useApp } from '@/state/context'
 import { PageContainer } from '@/components/PageContainer'
 import { NavIcon, Brand } from '@/components/Brand'
 import { Home } from '@/pages/Home'
+import { Places } from '@/pages/Places'
+import { livePlaces } from '@/services/places'
 import { Detail, Events, Sources } from '@/pages/Events'
 import { Configure, CourseMap, Itinerary, Saved } from '@/pages/Course'
 import {
@@ -119,6 +121,7 @@ function Shell() {
   }, [rawRoute, section])
   const titles: Record<string, string> = {
     home: '용인 나들이',
+    places: '장소 찾기',
     events: id ? '행사 상세' : '행사 찾기',
     map: '행사 지도',
     sources: '신청·출처 안내',
@@ -240,6 +243,23 @@ function Shell() {
     case 'home':
       content = <Home />
       break
+    case 'places': {
+      const requestedPage = Number(query.get('page') ?? 1)
+      content = (
+        <Places
+          query={query.get('q')?.trim() || '용인 관광명소'}
+          page={
+            Number.isInteger(requestedPage) &&
+            requestedPage >= 1 &&
+            requestedPage <= 45
+              ? requestedPage
+              : 1
+          }
+          mapView={query.get('view') === 'map'}
+        />
+      )
+      break
+    }
     case 'events':
       content = id ? (
         event ? (
@@ -247,12 +267,18 @@ function Shell() {
         ) : (
           <Missing message="행사 정보를 찾을 수 없어요." />
         )
+      ) : livePlaces ? (
+        <Places query={app.filters.query || '용인 관광명소'} />
       ) : (
         <Events />
       )
       break
     case 'map':
-      content = <Events mapView />
+      content = livePlaces ? (
+        <Places query={app.filters.query || '용인 관광명소'} mapView />
+      ) : (
+        <Events mapView />
+      )
       break
     case 'sources':
       content = event ? (
@@ -330,21 +356,22 @@ function Shell() {
     default:
       content = <Missing />
   }
-  const needsCatalog = [
-    'home',
-    'events',
-    'map',
-    'sources',
-    'configure',
-    'event-map',
-    'conditions',
-    'generating',
-    'origin',
-    'replace',
-    'manual',
-    'differences',
-    'calendar',
-  ].includes(section)
+  const needsCatalog =
+    [
+      'home',
+      'events',
+      'map',
+      'sources',
+      'configure',
+      'event-map',
+      'conditions',
+      'generating',
+      'origin',
+      'replace',
+      'manual',
+      'differences',
+      'calendar',
+    ].includes(section) && !(livePlaces && section === 'home')
   if (section === 'facilities')
     return (
       <div className="app-shell facility-shell">
@@ -470,11 +497,15 @@ function Shell() {
           )}
           {!auth && (
             <footer className="data-footer">
-              {isDemo
-                ? '시연 데이터 · 실제 행사·장소·요금과 다를 수 있어요.'
-                : app.data
-                  ? `정보 갱신 ${new Date(app.data.updatedAt).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}`
-                  : '정보를 불러오지 못했어요.'}
+              {livePlaces &&
+              (['home', 'places', 'map'].includes(section) ||
+                (section === 'events' && !id))
+                ? '실제 장소 정보 · 카카오맵 제공 · 운영 정보는 상세 페이지에서 확인해 주세요.'
+                : isDemo
+                  ? '시연 데이터 · 실제 행사·장소·요금과 다를 수 있어요.'
+                  : app.data
+                    ? `정보 갱신 ${new Date(app.data.updatedAt).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}`
+                    : '정보를 불러오지 못했어요.'}
               {!isDemo && (
                 <button
                   type="button"
@@ -496,7 +527,7 @@ function Shell() {
               [
                 '/',
                 'search',
-                '행사 찾기',
+                livePlaces ? '장소 찾기' : '행사 찾기',
                 !settingsArea &&
                   section !== 'saved-courses' &&
                   section !== 'guide' &&

@@ -1330,3 +1330,17 @@
   background: var(--blue);
   box-shadow: 0 0 0 5px #2849b233;
 }
+
+.live-place-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.live-place-card h2 {
+  overflow-wrap: anywhere;
+  font-size: 18px;
+}
+.real-places > .between .secondary {
+  font-size: 12px;
+  padding-inline: 12px;
+}

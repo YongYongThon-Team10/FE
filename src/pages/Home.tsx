@@ -4,6 +4,8 @@ import { emptyFilters } from '@/domain/models'
 import { useApp } from '@/state/context'
 import { go } from '@/hooks/useRoute'
 import { interpretSearch } from '@/services/search'
+import { livePlaces } from '@/services/places'
+import { Places } from './Places'
 
 export function Home() {
   const { setFilters, data } = useApp()
@@ -14,6 +16,10 @@ export function Home() {
   useEffect(() => () => pending.current?.abort(), [])
 
   const search = async () => {
+    if (livePlaces) {
+      go(`/places?q=${encodeURIComponent(text.trim() || '용인 관광명소')}`)
+      return
+    }
     if (pending.current) return
     const controller = new AbortController()
     pending.current = controller
@@ -75,8 +81,12 @@ export function Home() {
               id="home-search"
               value={text}
               onChange={(event) => setText(event.target.value)}
-              placeholder="이번 주말 아이와 갈 곳"
-              maxLength={200}
+              placeholder={
+                livePlaces
+                  ? '용인중앙시장, 카페, 공원'
+                  : '이번 주말 아이와 갈 곳'
+              }
+              maxLength={livePlaces ? 120 : 200}
               disabled={searching}
               aria-describedby={message ? 'home-search-error' : undefined}
             />
@@ -111,26 +121,32 @@ export function Home() {
         aria-labelledby="home-recommendations-title"
       >
         <div className="row between">
-          <h2 id="home-recommendations-title">이번 주말 추천 행사</h2>
+          <h2 id="home-recommendations-title">
+            {livePlaces ? '용인에서 가볼 만한 곳' : '이번 주말 추천 행사'}
+          </h2>
           <a
             className="small blue nowrap"
-            href="#/events"
+            href={livePlaces ? '#/places?q=용인%20관광명소' : '#/events'}
             onClick={() => setFilters({ ...emptyFilters })}
           >
-            행사 전체 보기 →
+            {livePlaces ? '장소 더 보기 →' : '행사 전체 보기 →'}
           </a>
         </div>
-        {data?.events.slice(0, 5).map((event) => (
-          <EventCard key={event.id} event={event} />
-        ))}
-        {data?.events.length === 0 && (
+        {livePlaces && <Places embedded />}
+        {!livePlaces &&
+          data?.events
+            .slice(0, 5)
+            .map((event) => <EventCard key={event.id} event={event} />)}
+        {!livePlaces && data?.events.length === 0 && (
           <p className="info">
             등록된 행사가 없어요. 잠시 후 다시 확인해 주세요.
           </p>
         )}
       </section>
       <p className="small muted">
-        마음에 드는 행사를 골라 하루 일정을 만들어 보세요.
+        {livePlaces
+          ? '마음에 드는 장소를 지도에서 확인하고 나들이를 준비해 보세요.'
+          : '마음에 드는 행사를 골라 하루 일정을 만들어 보세요.'}
       </p>
     </>
   )

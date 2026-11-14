@@ -16,8 +16,13 @@ export default defineConfig({
   projects: [
     {
       name: 'mobile',
-      testIgnore: /remote\.spec\.ts/,
+      testIgnore: /(?:remote|real-places)\.spec\.ts/,
       use: { baseURL: 'http://127.0.0.1:5173' },
+    },
+    {
+      name: 'real-places',
+      testMatch: /real-places\.spec\.ts/,
+      use: { baseURL: 'http://127.0.0.1:5175' },
     },
     {
       name: 'api-integration',
@@ -26,6 +31,16 @@ export default defineConfig({
     },
   ],
   webServer: [
+    {
+      command: 'npm run dev -- --host 127.0.0.1 --port 5175 --strictPort',
+      url: 'http://127.0.0.1:5175',
+      reuseExistingServer: !process.env.CI,
+      env: {
+        VITE_API_BASE_URL: '',
+        VITE_PLACES_API_BASE: '/api',
+        VITE_KAKAO_JAVASCRIPT_KEY: '',
+      },
+    },
     {
       command: 'npm run dev -- --host 127.0.0.1 --port 5173 --strictPort',
       url: 'http://127.0.0.1:5173',
