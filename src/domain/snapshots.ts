@@ -29,6 +29,8 @@ export function courseSnapshot(c: Course, shared = false): Course {
     eventId: c.eventId,
     createdAt: c.createdAt,
     isDemo: c.isDemo,
+    ...(c.notes ? { notes: c.notes } : {}),
+    ...(c.planned !== undefined ? { planned: c.planned } : {}),
     settings: {
       date: c.settings.date,
       companion: c.settings.companion,
@@ -45,6 +47,8 @@ export function courseSnapshot(c: Course, shared = false): Course {
       id: s.id,
       kind: s.kind,
       title: s.title,
+      ...(s.startTime !== undefined ? { startTime: s.startTime } : {}),
+      ...(s.endTime !== undefined ? { endTime: s.endTime } : {}),
       place:
         s.kind === 'return' ? null : s.place ? placeSnapshot(s.place) : null,
       missingReason:

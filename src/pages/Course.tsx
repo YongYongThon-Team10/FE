@@ -394,11 +394,18 @@ export function Itinerary({
       <section className="panel tinted">
         <h2 className="h3">✦ {course.name}</h2>
         <p className="small muted">
-          {real
-            ? '선택한 실제 장소와 주변 음식점·카페를 연결했어요. 체류 시간은 수정 가능한 계획이며 영업 시간·요금은 방문 전 확인해 주세요.'
-            : '선택한 곳 주변의 맛집·볼거리를 시간과 취향에 맞춰 연결했어요.'}
+          {course.eventId.startsWith('team:')
+            ? '공식 행사 일정의 브라우저 편집본입니다. 영업 시간·요금과 실제 장소 정보는 방문 전 공식 출처에서 확인해 주세요.'
+            : real
+              ? '선택한 실제 장소와 주변 음식점·카페를 연결했어요. 체류 시간은 수정 가능한 계획이며 영업 시간·요금은 방문 전 확인해 주세요.'
+              : '선택한 곳 주변의 맛집·볼거리를 시간과 취향에 맞춰 연결했어요.'}
         </p>
       </section>
+      {course.notes?.map((note, index) => (
+        <p className="info small" key={index}>
+          {note}
+        </p>
+      ))}
       {items.some((s) => s.overflows) && (
         <p className="warning" role="alert">
           일정이 종료 시간 {course.settings.endTime}을 넘어요. 항목을 줄이거나

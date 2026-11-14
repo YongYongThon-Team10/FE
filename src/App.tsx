@@ -13,6 +13,7 @@ import {
   FestivalShared,
 } from '@/pages/TeamFestivals'
 import { RealCoursePlan } from '@/pages/RealCoursePlan'
+import { Search } from '@/pages/Search'
 import { isRealCourse } from '@/domain/realCourse'
 import { livePlaces } from '@/services/places'
 import { teamBackend } from '@/services/teamBackend'
@@ -102,6 +103,17 @@ function Shell() {
   const parts = route.split('/').filter(Boolean)
   const section = parts[0] ?? 'home'
   const query = new URLSearchParams(rawRoute.split('?')[1])
+  const routePage = (
+    key: string,
+    min: number,
+    max: number,
+    fallback: number,
+  ) => {
+    const value = Number(query.get(key) ?? fallback)
+    return Number.isInteger(value) && value >= min && value <= max
+      ? value
+      : fallback
+  }
   let id = ''
   try {
     id = decodeURIComponent(parts[1] ?? '')
@@ -131,6 +143,7 @@ function Shell() {
   const titles: Record<string, string> = {
     home: SERVICE_NAME,
     places: '장소 찾기',
+    search: '장소·행사 검색',
     festivals: id ? '행사 상세' : '축제와 행사',
     'festival-itinerary': '행사 하루 일정',
     'festival-shared': '함께하는 행사 일정',
@@ -203,6 +216,18 @@ function Shell() {
   }, [rawRoute, title])
   let content: ReactNode
   switch (section) {
+    case 'search':
+      content = teamBackend.enabled ? (
+        <Search
+          key={query.get('q') ?? ''}
+          query={query.get('q')?.trim() || '용인'}
+          eventPage={routePage('eventPage', 0, 416, 0)}
+          placePage={routePage('placePage', 1, 45, 1)}
+        />
+      ) : (
+        <Places query={query.get('q')?.trim() || '용인 관광명소'} />
+      )
+      break
     case 'festivals':
       content = <TeamFestivals key={id} id={id} />
       break
@@ -528,9 +553,13 @@ function Shell() {
           {!auth && (
             <footer className="data-footer">
               {teamBackend.enabled &&
-              ['festivals', 'festival-itinerary', 'festival-shared'].includes(
-                section,
-              )
+              [
+                'festivals',
+                'festival-itinerary',
+                'festival-shared',
+                'calendar',
+                'search',
+              ].includes(section)
                 ? '행사 서버 제공 정보 / 공식 출처에서 최신 운영 정보를 확인해 주세요.'
                 : livePlaces &&
                     ([

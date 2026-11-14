@@ -142,6 +142,15 @@ export function parseCatalog(value: unknown): Catalog {
 }
 export function parseCourse(value: unknown): Course {
   object(value)
+  if (
+    value.notes !== undefined &&
+    (!Array.isArray(value.notes) ||
+      value.notes.length > 100 ||
+      !value.notes.every((n) => typeof n === 'string' && n.length <= 10000))
+  )
+    throw new Error('일정 안내를 확인해 주세요.')
+  if (value.planned !== undefined && typeof value.planned !== 'boolean')
+    throw new Error('일정 상태를 확인해 주세요.')
   string(value.id)
   string(value.name)
   string(value.eventId)
@@ -185,6 +194,14 @@ export function parseCourse(value: unknown): Course {
     throw new Error('코스는 1~30개 장소로 구성해야 합니다.')
   for (const stop of value.stops) {
     object(stop)
+    for (const field of ['startTime', 'endTime'])
+      if (
+        stop[field] !== undefined &&
+        stop[field] !== null &&
+        (typeof stop[field] !== 'string' ||
+          !/^\d{2,3}:[0-5]\d$/.test(stop[field]))
+      )
+        throw new Error('일정 시간을 확인해 주세요.')
     string(stop.id)
     string(stop.title)
     if (

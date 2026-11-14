@@ -11,44 +11,11 @@ import { PlacePhoto } from '@/components/PlacePhoto'
 import { dateKey } from '@/domain/planning'
 import { safeUrl } from '@/domain/validation'
 import { go } from '@/hooks/useRoute'
+import { useResource } from '@/hooks/useResource'
+import { useStorage } from '@/hooks/useStorage'
+import { useApp } from '@/state/context'
+import { localFestivalCourse } from '@/services/teamBackend/localCourse'
 
-function useResource<T>(
-  load: (signal: AbortSignal) => Promise<T>,
-  key: string,
-) {
-  const [value, setValue] = useState<{
-    key: string
-    data?: T
-    error?: string
-  }>()
-  const [attempt, retry] = useState(0)
-  const current = `${key}:${attempt}`
-  useEffect(() => {
-    const controller = new AbortController()
-    void load(controller.signal)
-      .then((data) => {
-        if (!controller.signal.aborted) setValue({ key: current, data })
-      })
-      .catch((error) => {
-        if (!controller.signal.aborted)
-          setValue({
-            key: current,
-            error:
-              error instanceof Error
-                ? error.message
-                : '정보를 불러오지 못했어요.',
-          })
-      })
-    return () => controller.abort()
-    // The caller encodes request arguments in key.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current])
-  return {
-    data: value?.key === current ? value.data : undefined,
-    error: value?.key === current ? value.error : undefined,
-    retry: () => retry((n) => n + 1),
-  }
-}
 function Status({ error, retry }: { error?: string; retry: () => void }) {
   return error ? (
     <div role="alert" className="error">
@@ -95,10 +62,41 @@ export function TeamFestivals({ id = '' }: { id?: string }) {
   return id ? <FestivalDetail key={id} id={id} /> : <FestivalList />
 }
 function FestivalList() {
-  const [from, setFrom] = useState(dateKey())
-  const [until, setUntil] = useState(dateKey())
-  const [district, setDistrict] = useState('')
-  const [page, setPage] = useState(0)
+  const [{ from, until, district, page }, setList, storageError] = useStorage(
+    'yongin.festival-list.v1',
+    { from: dateKey(), until: dateKey(), district: '', page: 0 },
+    (value: unknown) => {
+      const v = value as {
+        from: string
+        until: string
+        district: string
+        page: number
+      }
+      if (
+        !v ||
+        ![v.from, v.until].every(
+          (d) =>
+            typeof d === 'string' &&
+            /^\d{4}-\d{2}-\d{2}$/.test(d) &&
+            Number.isFinite(Date.parse(d)),
+        ) ||
+        v.from > v.until ||
+        !['', '기흥구', '수지구', '처인구'].includes(v.district) ||
+        !Number.isInteger(v.page) ||
+        v.page < 0
+      )
+        throw new Error('조회 조건을 확인해 주세요.')
+      return v
+    },
+  )
+  const change = (
+    patch: Partial<{
+      from: string
+      until: string
+      district: string
+      page: number
+    }>,
+  ) => setList({ from, until, district, page, ...patch })
   const { data, error, retry } = useResource<EventList>(
     (signal) =>
       teamBackend
@@ -130,9 +128,11 @@ function FestivalList() {
             value={from}
             onChange={(e) => {
               if (e.target.value) {
-                setFrom(e.target.value)
-                if (until < e.target.value) setUntil(e.target.value)
-                setPage(0)
+                change({
+                  from: e.target.value,
+                  until: until < e.target.value ? e.target.value : until,
+                  page: 0,
+                })
               }
             }}
           />
@@ -145,8 +145,7 @@ function FestivalList() {
             value={until}
             onChange={(e) => {
               if (e.target.value >= from) {
-                setUntil(e.target.value)
-                setPage(0)
+                change({ until: e.target.value, page: 0 })
               }
             }}
           />
@@ -156,8 +155,7 @@ function FestivalList() {
           <select
             value={district}
             onChange={(e) => {
-              setDistrict(e.target.value)
-              setPage(0)
+              change({ district: e.target.value, page: 0 })
             }}
           >
             <option value="">용인 전체</option>
@@ -167,6 +165,11 @@ function FestivalList() {
           </select>
         </label>
       </div>
+      {storageError && (
+        <p role="alert" className="error">
+          {storageError}
+        </p>
+      )}
       {!data ? (
         <Status error={error} retry={retry} />
       ) : (
@@ -213,7 +216,7 @@ function FestivalList() {
             <button
               className="secondary"
               disabled={page === 0}
-              onClick={() => setPage((n) => n - 1)}
+              onClick={() => change({ page: page - 1 })}
             >
               이전
             </button>
@@ -221,7 +224,7 @@ function FestivalList() {
             <button
               className="secondary"
               disabled={(page + 1) * 12 >= data.totalCount}
-              onClick={() => setPage((n) => n + 1)}
+              onClick={() => change({ page: page + 1 })}
             >
               다음
             </button>
@@ -242,8 +245,16 @@ function FestivalDetail({ id }: { id: string }) {
   )
   if (!e) return <Status error={error} retry={retry} />
   const info = e.keyInfo
+  const returnTo = new URLSearchParams(window.location.hash.split('?')[1]).get(
+    'return',
+  )
   return (
     <div className="stack">
+      {returnTo?.startsWith('/search?q=') && (
+        <a className="small blue" href={`#${returnTo}`}>
+          검색 결과로
+        </a>
+      )}
       <a className="small blue" href="#/festivals">
         행사 목록
       </a>
@@ -462,6 +473,8 @@ function FestivalGenerator({ event }: { event: EventDetail }) {
   )
 }
 export function FestivalItinerary({ id }: { id: string }) {
+  const app = useApp()
+  const [importError, setImportError] = useState('')
   const [shareId, setShareId] = useState('')
   const [sharing, setSharing] = useState(false)
   const [shareError, setShareError] = useState('')
@@ -504,6 +517,38 @@ export function FestivalItinerary({ id }: { id: string }) {
         이동시간은 직선거리 기반 추정입니다. 서버 일정은 현재 공용 데모 방식이며
         개인 보관함과 다릅니다.
       </p>
+      <section className="panel stack">
+        <h2>내 코스로 편집하고 보관하기</h2>
+        <p className="small muted">
+          이 브라우저에 편집본을 만들어 장소·시간·순서를 바꾸고 지도에서 확인할
+          수 있어요. 서버의 공용 일정은 변경하지 않아요.
+        </p>
+        <button
+          className="primary"
+          onClick={() => {
+            try {
+              const course = localFestivalCourse(data)
+              app.storeDraft(course)
+              if (app.saveCourse(course)) go(`/course/${course.id}`)
+              else
+                setImportError(
+                  '편집본은 만들었지만 브라우저 저장에 실패했어요. 저장 공간을 확인해 주세요.',
+                )
+            } catch (e) {
+              setImportError(
+                e instanceof Error ? e.message : '편집본을 만들지 못했어요.',
+              )
+            }
+          }}
+        >
+          이 브라우저에 저장하고 편집
+        </button>
+        {importError && (
+          <p className="error" role="alert">
+            {importError}
+          </p>
+        )}
+      </section>
       {data.warnings.map((w, i) => (
         <p className="info small" key={i}>
           {w.message}

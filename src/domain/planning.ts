@@ -82,12 +82,20 @@ export function schedule(course: Course) {
   let cursor = minutes(course.settings.startTime)
   return course.stops.map((stop) => {
     cursor += stop.travelMinutes ?? 0
+    if (stop.startTime) cursor = minutes(stop.startTime)
     const start = cursor
     cursor += stop.durationMinutes
+    if (stop.endTime) cursor = minutes(stop.endTime)
     return {
       ...stop,
-      start: clock(start),
-      end: clock(cursor),
+      start:
+        stop.startTime === undefined
+          ? clock(start)
+          : (stop.startTime ?? '시간 미정'),
+      end:
+        stop.endTime === undefined
+          ? clock(cursor)
+          : (stop.endTime ?? '시간 미정'),
       overflows: cursor > minutes(course.settings.endTime),
     }
   })
@@ -117,7 +125,12 @@ export function recalculate(course: Course): Course {
           : null
       // A stop without coordinates breaks the chain; do not estimate across it.
       if (stop.place || stop.kind === 'return') previous = location ?? null
-      return { ...stop, travelMinutes }
+      return {
+        ...stop,
+        startTime: undefined,
+        endTime: undefined,
+        travelMinutes,
+      }
     }),
   }
 }

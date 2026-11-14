@@ -19,7 +19,9 @@ export function Home() {
 
   const search = async () => {
     if (livePlaces) {
-      go(`/places?q=${encodeURIComponent(text.trim() || '용인 관광명소')}`)
+      go(
+        `/${teamBackend.enabled ? 'search' : 'places'}?q=${encodeURIComponent(text.trim() || '용인 관광명소')}`,
+      )
       return
     }
     if (pending.current) return
@@ -85,7 +87,9 @@ export function Home() {
               onChange={(event) => setText(event.target.value)}
               placeholder={
                 livePlaces
-                  ? '용인중앙시장, 카페, 공원'
+                  ? teamBackend.enabled
+                    ? '장소·행사명 또는 내일 무료 공연'
+                    : '용인중앙시장, 카페, 공원'
                   : '이번 주말 아이와 갈 곳'
               }
               maxLength={livePlaces ? 120 : 200}

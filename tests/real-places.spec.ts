@@ -346,6 +346,13 @@ test('실제 장소 선택 → 주변 음식점·카페 → 코스 편집·동�
   await page.getByLabel('실제 카페 C 체류 시간(분)').fill('90')
   await page.getByLabel('실제 카페 C 체류 시간(분)').press('Tab')
   await expect(page.locator('.stop-card').nth(1)).toContainText('90분')
+  await page.getByRole('link', { name: '조건 바꾸기', exact: true }).click()
+  await expect(page.getByLabel('주변 카페 선택')).toHaveValue('301')
+  await page
+    .getByRole('button', { name: '이 장소들로 하루 코스 만들기' })
+    .click()
+  await expect(page.locator('.stop-card').nth(1)).toContainText('실제 카페 C')
+  await expect(page.locator('.stop-card').nth(1)).toContainText('90분')
   await page.getByRole('link', { name: '지도에서 동선 확인하기' }).click()
   await expect(page.locator('.leaflet-marker-icon')).toHaveCount(3)
   await expect(page.getByRole('link', { name: /카카오맵 길찾기/ })).toHaveCount(

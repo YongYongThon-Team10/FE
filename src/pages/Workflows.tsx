@@ -15,6 +15,9 @@ import {
 } from '@/domain/planning'
 import { shareUrl } from '@/services/sharing'
 import { safeUrl } from '@/domain/validation'
+import { livePlaces } from '@/services/places'
+import { isRealCourse } from '@/domain/realCourse'
+import { teamBackend } from '@/services/teamBackend'
 
 export function Onboarding({ splash = false }: { splash?: boolean }) {
   const { preview } = useApp()
@@ -623,10 +626,7 @@ export function SaveShare({ course }: { course: Course }) {
         className="secondary"
         onClick={() => {
           try {
-            go(
-              '/shared?data=' +
-                encodeURIComponent(shareUrl(course).split('?data=')[1]),
-            )
+            go(new URL(shareUrl(course)).hash.slice(1))
           } catch (e) {
             setError((e as Error).message)
           }
@@ -696,6 +696,15 @@ export function DeleteCourse({ course }: { course: Course }) {
 export function Help() {
   const app = useApp()
   const eventId = app.draft?.eventId ?? app.data?.events[0]?.id
+  const current = app.draft ?? app.courses[0]
+  const plan =
+    current && isRealCourse(current)
+      ? `/plan/${current.id}`
+      : livePlaces
+        ? teamBackend.enabled
+          ? '/festivals'
+          : '/'
+        : `/configure/${eventId ?? ''}`
   return (
     <>
       <p className="guide-description help-intro">
@@ -706,25 +715,31 @@ export function Help() {
           '검색 결과가 없을 때',
           '조건을 줄이거나 초기화해서 다시 찾아보세요.',
           '검색 조건 다시 고르기 →',
-          '/conditions',
+          livePlaces ? '/' : '/conditions',
         ],
         [
           '위치를 사용할 수 없을 때',
-          '위치 권한 대신 출발지를 직접 선택할 수 있어요.',
+          livePlaces
+            ? '행사 상세에서 출발지를 검색해 선택할 수 있어요. 장소 코스의 실제 길찾기는 카카오맵에서 출발지를 확인해 주세요.'
+            : '위치 권한 대신 출발지를 직접 선택할 수 있어요.',
           '출발지 설정하기 →',
-          `/origin/${eventId ?? ''}`,
+          livePlaces
+            ? teamBackend.enabled
+              ? '/festivals'
+              : '/'
+            : `/origin/${eventId ?? ''}`,
         ],
         [
           '설정한 시간을 넘을 때',
           '일정을 자르지 않고 안내해요. 종료 시간을 늘리거나 일정을 조정해 주세요.',
           '코스 조건 바꾸기 →',
-          `/configure/${eventId ?? ''}`,
+          plan,
         ],
         [
           '코스를 저장·공유할 때',
           '저장한 상태를 다시 열 수 있어요. 공유는 일정 미리보기로 확인합니다.',
           '저장·공유 화면 보기 →',
-          app.draft ? `/share/${app.draft.id}` : '/saved',
+          current ? `/share/${current.id}` : '/saved',
         ],
       ].map(([title, body, label, path]) => (
         <section className="panel stack" key={title}>
@@ -745,7 +760,8 @@ export function LogoutComplete() {
       <h1>다시 만나요!</h1>
       <p className="small muted">
         안전하게 로그아웃했어요.
-        <br />내 코스를 보려면 다시 로그인해 주세요.
+        <br />
+        저장한 코스는 이 브라우저에서 계속 확인할 수 있어요.
       </p>
       <a className="primary" href="#/login">
         로그인하기

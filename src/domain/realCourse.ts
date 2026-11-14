@@ -3,7 +3,7 @@ import type { SearchPlace } from '@/services/places'
 import { dateKey, recalculate } from './planning'
 import { photoCandidates } from './images'
 export const isRealCourse = (course: Course) =>
-  course.eventId.startsWith('kakao:') && !course.isDemo
+  /^(kakao:|team:)/.test(course.eventId) && !course.isDemo
 export const placeCategory = (place: SearchPlace): Category =>
   (
     ({

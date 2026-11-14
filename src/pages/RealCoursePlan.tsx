@@ -7,6 +7,7 @@ import { recalculate } from '@/domain/planning'
 import { useApp } from '@/state/context'
 import { go } from '@/hooks/useRoute'
 import { PlacePhoto } from '@/components/PlacePhoto'
+import { BasicCoursePlan } from './BasicCoursePlan'
 
 type NearbyState = {
   key: string
@@ -30,7 +31,12 @@ export function RealCoursePlan({ course }: { course: Course }) {
         (stop) =>
           stop.place?.category === 'food' && stop.place.id !== course.eventId,
       )
-      ?.place?.id.replace('kakao:', '') ?? null,
+      ?.place?.id.replace('kakao:', '') ??
+      (course.planned ||
+      app.courses.some((c) => c.id === course.id) ||
+      course.stops.length > 1
+        ? ''
+        : null),
   )
   const [cafeChoice, setCafeChoice] = useState<string | null>(
     course.stops
@@ -38,7 +44,12 @@ export function RealCoursePlan({ course }: { course: Course }) {
         (stop) =>
           stop.place?.category === 'cafe' && stop.place.id !== course.eventId,
       )
-      ?.place?.id.replace('kakao:', '') ?? null,
+      ?.place?.id.replace('kakao:', '') ??
+      (course.planned ||
+      app.courses.some((c) => c.id === course.id) ||
+      course.stops.length > 1
+        ? ''
+        : null),
   )
   const [duration, setDuration] = useState(
     course.stops.find((stop) => stop.place?.id === course.eventId)
@@ -78,20 +89,38 @@ export function RealCoursePlan({ course }: { course: Course }) {
     })
     return () => controller.abort()
   }, [key, lat, lng, radius])
-  if (!anchor?.location)
-    return (
-      <section className="empty-state">
-        <h1>기준 장소를 다시 선택해 주세요</h1>
-        <a href="#/" className="primary">
-          장소 검색으로
-        </a>
-      </section>
-    )
+  if (!anchor?.location) return <BasicCoursePlan course={course} />
   const ready = resource?.key === key ? resource : null
   const candidates = (data?: PlaceResults) =>
     data?.places.filter((place) => `kakao:${place.id}` !== anchor.id) ?? []
-  const food = candidates(ready?.food)
-  const cafes = candidates(ready?.cafe)
+  const retained = (category: 'food' | 'cafe', items: SearchPlace[]) => {
+    const old = course.stops.find(
+      (s) => s.place?.category === category && s.place.id !== anchor.id,
+    )?.place
+    if (
+      !old?.location ||
+      !old.id.startsWith('kakao:') ||
+      !old.source.url ||
+      items.some((p) => `kakao:${p.id}` === old.id)
+    )
+      return items
+    return [
+      ...items,
+      {
+        ...old,
+        id: old.id.slice(6),
+        category: old.description,
+        categoryGroup: category === 'food' ? 'FD6' : 'CE7',
+        address: old.address,
+        roadAddress: old.address,
+        phone: '',
+        location: old.location,
+        url: old.source.url,
+      },
+    ]
+  }
+  const food = retained('food', candidates(ready?.food))
+  const cafes = retained('cafe', candidates(ready?.cafe))
   const selected = (items: SearchPlace[], choice: string | null) =>
     choice === '' ? undefined : (items.find((p) => p.id === choice) ?? items[0])
   const meal = selected(food, foodChoice)
@@ -117,38 +146,59 @@ export function RealCoursePlan({ course }: { course: Course }) {
       return
     }
     if (generating || failed) return
-    const chosen: CourseStop[] = [
-      {
-        id: crypto.randomUUID(),
-        kind: 'arrival',
-        title: anchor.name,
-        place: anchor,
-        durationMinutes: duration,
-        travelMinutes: null,
-        missingReason: null,
-      },
-    ]
-    if (meal)
-      chosen.push({
-        id: crypto.randomUUID(),
-        kind: 'meal',
-        title: meal.name,
-        place: realPlace(meal, ready!.food!.fetchedAt),
-        durationMinutes: 60,
-        travelMinutes: null,
-        missingReason: null,
-      })
-    if (cafe)
-      chosen.push({
-        id: crypto.randomUUID(),
-        kind: 'nearby',
-        title: cafe.name,
-        place: realPlace(cafe, ready!.cafe!.fetchedAt),
-        durationMinutes: 60,
-        travelMinutes: null,
-        missingReason: null,
-      })
-    const next = recalculate({ ...course, settings, stops: chosen })
+    const oldMeal = course.stops.find(
+      (s) => s.kind === 'meal' && s.place?.id !== anchor.id,
+    )
+    const oldCafe = course.stops.find(
+      (s) => s.place?.category === 'cafe' && s.place.id !== anchor.id,
+    )
+    const makeStop = (
+      place: SearchPlace,
+      kind: CourseStop['kind'],
+      old: CourseStop | undefined,
+      fetchedAt: string,
+    ): CourseStop => ({
+      id: old?.id ?? crypto.randomUUID(),
+      kind,
+      title: place.name,
+      place: realPlace(place, fetchedAt),
+      durationMinutes: old?.durationMinutes || 60,
+      travelMinutes: null,
+      missingReason: null,
+    })
+    const newMeal = meal
+      ? makeStop(meal, 'meal', oldMeal, ready!.food!.fetchedAt)
+      : undefined
+    const newCafe = cafe
+      ? makeStop(cafe, 'nearby', oldCafe, ready!.cafe!.fetchedAt)
+      : undefined
+    const chosen: CourseStop[] = course.stops.flatMap((stop) => {
+      if (stop.place?.id === anchor.id)
+        return [{ ...stop, durationMinutes: duration }]
+      if (stop.id === oldMeal?.id) return newMeal ? [newMeal] : []
+      if (stop.id === oldCafe?.id) return newCafe ? [newCafe] : []
+      return [stop]
+    })
+    if (newMeal && !oldMeal)
+      chosen.splice(
+        chosen.findIndex((s) => s.place?.id === anchor.id) + 1,
+        0,
+        newMeal,
+      )
+    if (newCafe && !oldCafe)
+      chosen.splice(
+        newMeal
+          ? chosen.findIndex((s) => s.id === newMeal.id) + 1
+          : chosen.findIndex((s) => s.place?.id === anchor.id) + 1,
+        0,
+        newCafe,
+      )
+    const next = recalculate({
+      ...course,
+      planned: true,
+      settings,
+      stops: chosen,
+    })
     app.storeDraft(next)
     if (app.courses.some((item) => item.id === next.id)) app.saveCourse(next)
     go(`/course/${next.id}`)
@@ -300,8 +350,9 @@ export function RealCoursePlan({ course }: { course: Course }) {
         </section>
         <p className="info small">
           선택 장소 주변의 실제 음식점·카페를 거리순으로 제안해요. 평점·영업
-          여부는 확인되지 않으므로 방문 전 카카오맵 상세에서 확인해 주세요.
-          음식점과 카페는 각 60분의 계획으로 시작합니다.
+          여부는 확인되지 않으므로 방문 전 카카오맵 상세에서 확인해 주세요. 새
+          음식점과 카페는 각 60분으로 시작하며, 기존에 수정한 체류 시간과 다른
+          일정은 유지해요. 기존 선택 장소는 새 검색에 없어도 함께 표시해요.
         </p>
         {generating && <p role="status">주변 음식점과 카페를 찾고 있어요…</p>}
         {ready?.foodError && (

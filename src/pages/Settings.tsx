@@ -7,6 +7,7 @@ import { go } from '@/hooks/useRoute'
 import { api, isDemo, isAuthDemo, request } from '@/services/api'
 import { teamBackend } from '@/services/teamBackend'
 import { sampleUser } from '@/data/scenarios'
+import { isRealCourse } from '@/domain/realCourse'
 
 export function Login({
   mode = 'login',
@@ -20,6 +21,7 @@ export function Login({
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   const submit = async () => {
+    if (mode === 'reset' && teamBackend.enabled) return
     setBusy(true)
     setMessage('')
     try {
@@ -103,7 +105,11 @@ export function Login({
             />
           </label>
         )}
-        <button className="primary" type="submit" disabled={busy}>
+        <button
+          className="primary"
+          type="submit"
+          disabled={busy || (mode === 'reset' && teamBackend.enabled)}
+        >
           {busy
             ? '처리 중…'
             : mode === 'login'
@@ -113,6 +119,11 @@ export function Login({
                 : '재설정 메일 받기'}
         </button>
       </form>
+      {mode === 'reset' && teamBackend.enabled && (
+        <p className="info" role="status">
+          현재 서버는 비밀번호 재설정을 지원하지 않아요. 운영팀에 문의해 주세요.
+        </p>
+      )}
       {teamBackend.enabled && (
         <p className="small muted">
           로그인은 현재 페이지에서 유지돼요. 새로고침하면 다시 로그인해 주세요.
@@ -403,11 +414,17 @@ export function Privacy() {
       <button
         className="secondary danger"
         type="button"
-        disabled={!app.user}
+        disabled={!app.user || teamBackend.enabled}
         onClick={() => setConfirm(true)}
       >
         회원 탈퇴
       </button>
+      {teamBackend.enabled && (
+        <p className="tiny muted">
+          회원 탈퇴는 서버 연결을 준비 중이에요. 계정 삭제가 필요하면 운영팀에
+          문의해 주세요.
+        </p>
+      )}
       {!app.user && (
         <p className="tiny settings-caption">
           게스트는 삭제할 연결 계정이 없어요.
@@ -735,6 +752,9 @@ export function Contact() {
   )
 }
 export function Guide() {
+  const app = useApp()
+  const current = app.draft ?? app.courses[0]
+  const eventsPath = teamBackend.enabled ? '/festivals' : '/events'
   return (
     <>
       <h1 className="guide-title">우리만의 하루를 만드는 방법</h1>
@@ -759,19 +779,23 @@ export function Guide() {
             '행사 리스트',
             '마음에 드는 행사를 골라요.',
             '목록과 지도에서 일시·요금·출처를 확인해요.',
-            '/events',
+            eventsPath,
           ],
           [
             '행사 상세',
             '방문 전 정보를 확인해요.',
             '프로그램과 신청 채널도 함께 확인해요.',
-            '/events',
+            eventsPath,
           ],
           [
             '세부 설정',
             '우리에게 맞는 하루를 정해요.',
-            '출발지·시간·예산과 활동을 선택해요.',
-            '/events',
+            '행사를 고른 뒤 출발지와 시간을 정하거나, 장소 코스의 조건을 바꿔요.',
+            current
+              ? isRealCourse(current)
+                ? `/plan/${current.id}`
+                : `/configure/${current.eventId}`
+              : eventsPath,
           ],
           [
             '하루 일정',

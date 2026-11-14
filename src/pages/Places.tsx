@@ -42,7 +42,7 @@ function mapPlace(place: SearchPlace, fetchedAt: string): Place {
     },
   }
 }
-function PlaceCard({ place }: { place: SearchPlace }) {
+export function PlaceCard({ place }: { place: SearchPlace }) {
   const app = useApp()
   return (
     <article className="panel live-place-card">

@@ -108,6 +108,8 @@ export type CourseSettings = {
   activities: string[]
 }
 export type CourseStop = {
+  startTime?: string | null
+  endTime?: string | null
   id: string
   kind: 'arrival' | 'program' | 'meal' | 'nearby' | 'return' | 'custom'
   title: string
@@ -117,6 +119,8 @@ export type CourseStop = {
   travelMinutes: number | null
 }
 export type Course = {
+  notes?: string[]
+  planned?: boolean
   id: string
   name: string
   eventId: string
