@@ -1,3 +1,5 @@
+import { dayWindowError } from '@/domain/dayPlan'
+import { DayTimeSettings } from '@/components/DayPlanning'
 import { PlaceCrowding } from '@/components/PlaceCrowding'
 import { useEffect, useRef, useState } from 'react'
 import { teamBackend } from '@/services/teamBackend'
@@ -361,7 +363,7 @@ function FestivalGenerator({ event }: { event: EventDetail }) {
     }
   }
   const generate = async () => {
-    if (!origin || !date || start >= end) {
+    if (!origin || dayWindowError({ date, startTime: start, endTime: end })) {
       setError('출발지를 선택하고 날짜와 시간대를 확인해 주세요.')
       return
     }
@@ -426,30 +428,14 @@ function FestivalGenerator({ event }: { event: EventDetail }) {
           {origin === p ? ' (선택됨)' : ''}
         </button>
       ))}
-      <label className="field">
-        방문 날짜
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-        />
-      </label>
-      <label className="field">
-        시작 시간
-        <input
-          type="time"
-          value={start}
-          onChange={(e) => setStart(e.target.value)}
-        />
-      </label>
-      <label className="field">
-        종료 시간
-        <input
-          type="time"
-          value={end}
-          onChange={(e) => setEnd(e.target.value)}
-        />
-      </label>
+      <DayTimeSettings
+        value={{ date, startTime: start, endTime: end }}
+        onChange={(window) => {
+          setDate(window.date)
+          setStart(window.startTime)
+          setEnd(window.endTime)
+        }}
+      />
       <label className="field">
         이동수단
         <select

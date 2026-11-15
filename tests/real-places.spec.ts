@@ -460,7 +460,7 @@ test('실제 장소 선택 → 주변 음식점·카페 → 코스 편집·동�
   await page.goto('/#/places?q=선택장소')
   await page.getByRole('button', { name: /로 하루 코스 만들기/ }).click()
   await expect(
-    page.getByRole('heading', { name: '실제 장소로 하루를 연결해요' }),
+    page.getByRole('heading', { name: '나만의 하루 일정 만들기' }),
   ).toBeVisible()
   await page.reload()
   await expect(page.getByLabel('주변 음식점 선택')).toBeVisible()
@@ -552,4 +552,98 @@ test('주변 추천 실패는 생성을 막고, 실제 빈 후보는 가짜 장�
     .click()
   await expect(page.locator('.stop-card')).toHaveCount(1)
   await expect(page.locator('body')).not.toContainText('시연 데이터')
+})
+
+test('시간대를 고르고 머무는 시간을 조절한 뒤 일정 수정·저장·공유까지 유지한다', async ({
+  page,
+}) => {
+  await page.route('**/api/places?*', (route) =>
+    route.fulfill({
+      json: { ...result('시간표'), places: [place('1', '하루 나들이 장소')] },
+    }),
+  )
+  await page.route('**/api/nearby?*', (route) => {
+    const food =
+      new URL(route.request().url()).searchParams.get('category') === 'FD6'
+    return route.fulfill({
+      json: {
+        ...result('주변'),
+        places: [
+          {
+            ...place(
+              food ? '101' : '201',
+              food ? '점심 식당' : '쉬어가는 카페',
+            ),
+            categoryGroup: food ? 'FD6' : 'CE7',
+          },
+        ],
+      },
+    })
+  })
+  await page.goto('/#/places?q=시간표')
+  await page.getByRole('button', { name: /로 하루 코스 만들기/ }).click()
+  await page.getByLabel('방문 날짜', { exact: true }).fill('2026-11-16')
+  await page.getByRole('button', { name: '오전 나들이', exact: true }).click()
+  await expect(page.getByLabel('시작 시간', { exact: true })).toHaveValue(
+    '09:00',
+  )
+  await expect(page.getByLabel('종료 시간', { exact: true })).toHaveValue(
+    '12:00',
+  )
+  await page.getByLabel('식사 시간(분)', { exact: true }).fill('45')
+  await page.getByLabel('카페 머무는 시간(분)', { exact: true }).fill('30')
+  const preview = page.getByRole('region', { name: '하루 시간표 미리보기' })
+  await expect(preview).toContainText('15분 더 필요해요')
+  await page.getByLabel('선택 장소 체류 시간(분)', { exact: true }).fill('60')
+  await expect(preview).toContainText('2시간 15분')
+  await expect(preview).toContainText('45분')
+  await expect(preview.locator('.day-plan-stops li').last()).toContainText(
+    '10:45 — 11:15',
+  )
+  await page.getByLabel('종료 시간', { exact: true }).fill('08:00')
+  await page
+    .getByRole('button', { name: '이 장소들로 하루 코스 만들기' })
+    .click()
+  await expect(page.getByRole('alert')).toContainText('시간')
+  await page.getByLabel('종료 시간', { exact: true }).fill('12:00')
+  await page.setViewportSize({ width: 320, height: 844 })
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true)
+  await preview.screenshot({ path: '.openai/qa/day-plan-preview-320.png' })
+  await page
+    .getByRole('button', { name: '이 장소들로 하루 코스 만들기' })
+    .click()
+  await expect(page.locator('.stop-card')).toHaveCount(3)
+  await expect(page.locator('.stop-card').first()).toContainText(
+    '09:00 — 10:00',
+  )
+  await page.locator('.day-time-editor summary').click()
+  await page.getByLabel('시작 시간', { exact: true }).fill('14:00')
+  await page.getByLabel('종료 시간', { exact: true }).fill('17:00')
+  await page.getByRole('button', { name: '시간표에 반영', exact: true }).click()
+  await expect(page.locator('.stop-card').first()).toContainText(
+    '14:00 — 15:00',
+  )
+  await expect(page.locator('.stop-card').last()).toContainText('15:45 — 16:15')
+  await page.getByRole('link', { name: '저장 · 공유 ↗', exact: true }).click()
+  await page
+    .getByRole('button', { name: '내 코스에 저장', exact: true })
+    .click()
+  await page
+    .getByRole('button', { name: '공유 링크 만들기 · 복사', exact: true })
+    .click()
+  const shared = await page
+    .getByLabel('공유 링크', { exact: true })
+    .inputValue()
+  await page.goto(shared)
+  await expect(page.locator('.stop-card').first()).toContainText(
+    '14:00 — 15:00',
+  )
+  await expect(page.locator('.stop-card').last()).toContainText('15:45 — 16:15')
+  await page.reload()
+  await expect(page.locator('main')).toContainText('2026-11-16')
+  await expect(page.locator('.stop-card').last()).toContainText('15:45 — 16:15')
 })

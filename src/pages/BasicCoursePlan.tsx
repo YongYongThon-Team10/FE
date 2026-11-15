@@ -1,3 +1,5 @@
+import { dayWindowError } from '@/domain/dayPlan'
+import { DayTimeSettings } from '@/components/DayPlanning'
 import { useState } from 'react'
 import type { Course } from '@/domain/models'
 import { useApp } from '@/state/context'
@@ -19,7 +21,7 @@ export function BasicCoursePlan({ course }: { course: Course }) {
         className="panel form-stack"
         onSubmit={(e) => {
           e.preventDefault()
-          if (!settings.date || settings.startTime >= settings.endTime) {
+          if (dayWindowError(settings)) {
             setError('날짜와 시간대를 확인해 주세요.')
             return
           }
@@ -29,37 +31,10 @@ export function BasicCoursePlan({ course }: { course: Course }) {
           go(`/course/${course.id}`)
         }}
       >
-        <label className="field">
-          방문 날짜
-          <input
-            type="date"
-            required
-            value={settings.date}
-            onChange={(e) => setSettings({ ...settings, date: e.target.value })}
-          />
-        </label>
-        <label className="field">
-          시작 시간
-          <input
-            type="time"
-            required
-            value={settings.startTime}
-            onChange={(e) =>
-              setSettings({ ...settings, startTime: e.target.value })
-            }
-          />
-        </label>
-        <label className="field">
-          종료 시간
-          <input
-            type="time"
-            required
-            value={settings.endTime}
-            onChange={(e) =>
-              setSettings({ ...settings, endTime: e.target.value })
-            }
-          />
-        </label>
+        <DayTimeSettings
+          value={settings}
+          onChange={(window) => setSettings({ ...settings, ...window })}
+        />
         {error && (
           <p className="error" role="alert">
             {error}

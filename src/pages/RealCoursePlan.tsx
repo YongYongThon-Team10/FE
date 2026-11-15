@@ -1,3 +1,5 @@
+import { dayWindowError } from '@/domain/dayPlan'
+import { DayTimeSettings, DaySchedulePreview } from '@/components/DayPlanning'
 import { useEffect, useState } from 'react'
 import type { Course, CourseStop } from '@/domain/models'
 import type { PlaceResults, SearchPlace } from '@/services/places'
@@ -57,6 +59,16 @@ export function RealCoursePlan({ course }: { course: Course }) {
   const [duration, setDuration] = useState(
     course.stops.find((stop) => stop.place?.id === course.eventId)
       ?.durationMinutes ?? 120,
+  )
+  const [mealDuration, setMealDuration] = useState(
+    course.stops.find(
+      (s) => s.kind === 'meal' && s.place?.id !== course.eventId,
+    )?.durationMinutes ?? 60,
+  )
+  const [cafeDuration, setCafeDuration] = useState(
+    course.stops.find(
+      (s) => s.place?.category === 'cafe' && s.place.id !== course.eventId,
+    )?.durationMinutes ?? 60,
   )
   const [error, setError] = useState('')
   const lat = anchor?.location?.lat
@@ -133,35 +145,12 @@ export function RealCoursePlan({ course }: { course: Course }) {
   )
   const generating = !ready
   const failed = Boolean(ready?.foodError || ready?.cafeError)
-  const generate = (form: HTMLFormElement) => {
-    // Read the submitted controls too: browser date pickers/autofill may update
-    // the visible input before React has received a change event.
-    const fields = new FormData(form)
-    const submittedSettings = {
-      ...settings,
-      date: String(fields.get('date')),
-      startTime: String(fields.get('startTime')),
-      endTime: String(fields.get('endTime')),
-      transport: String(
-        fields.get('transport'),
-      ) as Course['settings']['transport'],
-    }
-    const submittedDuration = Number(fields.get('duration'))
-    setError('')
-    if (
-      !/^\d{4}-\d{2}-\d{2}$/.test(submittedSettings.date) ||
-      !Number.isFinite(Date.parse(submittedSettings.date)) ||
-      submittedSettings.startTime >= submittedSettings.endTime ||
-      !Number.isInteger(submittedDuration) ||
-      submittedDuration < 15 ||
-      submittedDuration > 480
-    ) {
-      setError(
-        '방문 날짜와 시작·종료 시간, 체류 시간(15~480분)을 확인해 주세요.',
-      )
-      return
-    }
-    if (generating || failed) return
+  const buildPlan = (
+    submittedSettings: Course['settings'],
+    submittedDuration: number,
+    mealStay = mealDuration,
+    cafeStay = cafeDuration,
+  ) => {
     const oldMeal = course.stops.find(
       (s) => s.kind === 'meal' && s.place?.id !== anchor.id,
     )
@@ -174,19 +163,29 @@ export function RealCoursePlan({ course }: { course: Course }) {
       old: CourseStop | undefined,
       fetchedAt: string,
     ): CourseStop => ({
-      id: old?.id ?? crypto.randomUUID(),
+      id: old?.id ?? `${course.id}:${kind}:${place.id}`,
       kind,
       title: place.name,
       place: realPlace(place, fetchedAt),
-      durationMinutes: old?.durationMinutes || 60,
+      durationMinutes: kind === 'meal' ? mealStay : cafeStay,
       travelMinutes: null,
       missingReason: null,
     })
     const newMeal = meal
-      ? makeStop(meal, 'meal', oldMeal, ready!.food!.fetchedAt)
+      ? makeStop(
+          meal,
+          'meal',
+          oldMeal,
+          ready?.food?.fetchedAt ?? course.createdAt,
+        )
       : undefined
     const newCafe = cafe
-      ? makeStop(cafe, 'nearby', oldCafe, ready!.cafe!.fetchedAt)
+      ? makeStop(
+          cafe,
+          'nearby',
+          oldCafe,
+          ready?.cafe?.fetchedAt ?? course.createdAt,
+        )
       : undefined
     const chosen: CourseStop[] = course.stops.flatMap((stop) => {
       if (stop.place?.id === anchor.id)
@@ -215,15 +214,58 @@ export function RealCoursePlan({ course }: { course: Course }) {
       settings: submittedSettings,
       stops: chosen,
     })
+    return next
+  }
+  const generate = (form: HTMLFormElement) => {
+    // Read the submitted controls too: browser date pickers/autofill may update
+    // the visible input before React has received a change event.
+    const fields = new FormData(form)
+    const submittedSettings = {
+      ...settings,
+      date: String(fields.get('date')),
+      startTime: String(fields.get('startTime')),
+      endTime: String(fields.get('endTime')),
+      transport: String(
+        fields.get('transport'),
+      ) as Course['settings']['transport'],
+    }
+    const submittedDuration = Number(fields.get('duration'))
+    const submittedMeal = Number(fields.get('mealDuration') ?? mealDuration)
+    const submittedCafe = Number(fields.get('cafeDuration') ?? cafeDuration)
+    setError('')
+    if (
+      dayWindowError(submittedSettings) ||
+      [
+        submittedDuration,
+        ...(meal ? [submittedMeal] : []),
+        ...(cafe ? [submittedCafe] : []),
+      ].some((value) => !Number.isInteger(value) || value < 15 || value > 480)
+    ) {
+      setError(
+        '방문 날짜와 시작·종료 시간, 체류 시간(15~480분)을 확인해 주세요.',
+      )
+      return
+    }
+    if (generating || failed) return
+    const next = buildPlan(
+      submittedSettings,
+      submittedDuration,
+      submittedMeal,
+      submittedCafe,
+    )
     app.storeDraft(next)
     if (app.courses.some((item) => item.id === next.id)) app.saveCourse(next)
     go(`/course/${next.id}`)
   }
+  const preview = buildPlan(settings, duration)
   const options = (
     label: string,
     list: SearchPlace[],
     value: SearchPlace | undefined,
     change: (id: string) => void,
+    stay: number,
+    changeStay: (value: number) => void,
+    fieldName: string,
   ) => (
     <section className="panel stack">
       <h2>{label}</h2>
@@ -260,6 +302,21 @@ export function RealCoursePlan({ course }: { course: Course }) {
           </label>
           {value && (
             <>
+              <label className="field">
+                {label === '주변 음식점'
+                  ? '식사 시간(분)'
+                  : '카페 머무는 시간(분)'}
+                <input
+                  type="number"
+                  name={fieldName}
+                  min={15}
+                  max={480}
+                  step={1}
+                  required
+                  value={stay}
+                  onChange={(e) => changeStay(Number(e.target.value))}
+                />
+              </label>
               <p className="small">{value.roadAddress || value.address}</p>
               <PlaceCrowding key={value.id} place={value} />
               <a
@@ -283,20 +340,10 @@ export function RealCoursePlan({ course }: { course: Course }) {
   )
   return (
     <>
-      <h1 className="blue">실제 장소로 하루를 연결해요</h1>
-      <a
-        className="secondary"
-        href={`#/recommendations?${new URLSearchParams({ lat: String(lat), lng: String(lng), name: anchor.name, categories: 'food,cafe' })}`}
-      >
-        이 장소 주변 취향 맞춤 맛집과 카페
-      </a>
-      <section className="panel stack">
-        <PlacePhoto name={anchor.name} image={anchor} />
-        <p className="eyebrow">선택한 장소</p>
-        <h2>{anchor.name}</h2>
-        <p className="small">{anchor.address}</p>
-        <PlaceCrowding place={anchor} />
-      </section>
+      <h1 className="blue">나만의 하루 일정 만들기</h1>
+      <p className="small muted">
+        나들이 시간을 정하고, 가고 싶은 장소와 머무는 시간을 골라 보세요.
+      </p>
       <form
         className="form-stack"
         onSubmit={(event) => {
@@ -305,44 +352,10 @@ export function RealCoursePlan({ course }: { course: Course }) {
         }}
       >
         <section className="panel form-stack">
-          <label className="field">
-            방문 날짜
-            <input
-              type="date"
-              name="date"
-              required
-              value={settings.date}
-              onChange={(event) =>
-                setSettings({ ...settings, date: event.target.value })
-              }
-            />
-          </label>
-          <div className="row">
-            <label className="field grow">
-              시작 시간
-              <input
-                type="time"
-                name="startTime"
-                required
-                value={settings.startTime}
-                onChange={(event) =>
-                  setSettings({ ...settings, startTime: event.target.value })
-                }
-              />
-            </label>
-            <label className="field grow">
-              종료 시간
-              <input
-                type="time"
-                name="endTime"
-                required
-                value={settings.endTime}
-                onChange={(event) =>
-                  setSettings({ ...settings, endTime: event.target.value })
-                }
-              />
-            </label>
-          </div>
+          <DayTimeSettings
+            value={settings}
+            onChange={(window) => setSettings({ ...settings, ...window })}
+          />
           <label className="field">
             선택 장소 체류 시간(분)
             <input
@@ -389,11 +402,22 @@ export function RealCoursePlan({ course }: { course: Course }) {
             </select>
           </label>
         </section>
+        <a
+          className="secondary"
+          href={`#/recommendations?${new URLSearchParams({ lat: String(lat), lng: String(lng), name: anchor.name, categories: 'food,cafe' })}`}
+        >
+          이 장소 주변 취향 맞춤 맛집과 카페
+        </a>
+        <section className="panel stack">
+          <PlacePhoto name={anchor.name} image={anchor} />
+          <p className="eyebrow">선택한 장소</p>
+          <h2>{anchor.name}</h2>
+          <p className="small">{anchor.address}</p>
+          <PlaceCrowding place={anchor} />
+        </section>
         <p className="info small">
-          선택 장소 주변의 실제 음식점·카페를 거리순으로 제안해요. 평점·영업
-          여부는 확인되지 않으므로 방문 전 카카오맵 상세에서 확인해 주세요. 새
-          음식점과 카페는 각 60분으로 시작하며, 기존에 수정한 체류 시간과 다른
-          일정은 유지해요. 기존 선택 장소는 새 검색에 없어도 함께 표시해요.
+          마음에 드는 음식점과 카페를 골라 더해 보세요. 머무는 시간을 조절하면
+          아래 시간표에 바로 반영돼요.
         </p>
         {generating && <p role="status">주변 음식점과 카페를 찾고 있어요…</p>}
         {ready?.foodError && (
@@ -415,14 +439,27 @@ export function RealCoursePlan({ course }: { course: Course }) {
             주변 추천 다시 불러오기
           </button>
         )}
-        {ready?.food && options('주변 음식점', food, meal, setFoodChoice)}
+        {ready?.food &&
+          options(
+            '주변 음식점',
+            food,
+            meal,
+            setFoodChoice,
+            mealDuration,
+            setMealDuration,
+            'mealDuration',
+          )}
         {ready?.cafe &&
           options(
             '주변 카페',
             cafes.filter((p) => p.id !== meal?.id),
             cafe,
             setCafeChoice,
+            cafeDuration,
+            setCafeDuration,
+            'cafeDuration',
           )}
+        {ready && !failed && <DaySchedulePreview course={preview} />}
         {error && (
           <p className="error" role="alert">
             {error}

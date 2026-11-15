@@ -1,3 +1,9 @@
+import { dayWindowError } from '@/domain/dayPlan'
+import {
+  DayTimeSettings,
+  DayTimeEditor,
+  DaySchedulePreview,
+} from '@/components/DayPlanning'
 import { lazy, Suspense, useMemo, useState } from 'react'
 import type {
   Course,
@@ -228,35 +234,10 @@ export function Configure({ event }: { event: Event }) {
         </fieldset>
         <fieldset>
           <legend>언제, 얼마나 머무를까요?</legend>
-          <label className="field">
-            방문 날짜
-            <input
-              type="date"
-              required
-              value={settings.date}
-              onChange={(e) => set('date', e.target.value)}
-            />
-          </label>
-          <div className="row">
-            <label className="field grow">
-              시작
-              <input
-                type="time"
-                required
-                value={settings.startTime}
-                onChange={(e) => set('startTime', e.target.value)}
-              />
-            </label>
-            <label className="field grow">
-              종료
-              <input
-                type="time"
-                required
-                value={settings.endTime}
-                onChange={(e) => set('endTime', e.target.value)}
-              />
-            </label>
-          </div>
+          <DayTimeSettings
+            value={settings}
+            onChange={(window) => setSettings({ ...settings, ...window })}
+          />
         </fieldset>
         <fieldset>
           <legend>예산은 어떻게 할까요?</legend>
@@ -341,7 +322,7 @@ export function Itinerary({
   const real = isRealCourse(course)
   const cost = course.stops.reduce((n, s) => n + (s.place?.price ?? 0), 0)
   const unknown = course.stops.some((s) => s.place?.price === null)
-  const commit = async (stops: CourseStop[]) => {
+  const commit = async (stops: CourseStop[], settings = course.settings) => {
     if (!stops.length) {
       setError('일정은 하나 이상 남겨 주세요.')
       return
@@ -349,7 +330,7 @@ export function Itinerary({
     setBusy(true)
     setError('')
     try {
-      const next = { ...course, stops }
+      const next = { ...course, stops, settings }
       const result =
         real || isDemo || shared
           ? recalculate(next)
@@ -391,6 +372,18 @@ export function Itinerary({
         {course.settings.transport} · {course.settings.startTime}–
         {course.settings.endTime}
       </p>
+      <DaySchedulePreview course={course} summaryOnly />
+      {!shared && (
+        <DayTimeEditor
+          key={`${course.id}-${course.settings.date}-${course.settings.startTime}-${course.settings.endTime}`}
+          course={course}
+          busy={busy}
+          onApply={async (window) => {
+            if (dayWindowError(window)) return
+            await commit(course.stops, { ...course.settings, ...window })
+          }}
+        />
+      )}
       <section className="panel tinted">
         <h2 className="h3">✦ {course.name}</h2>
         <p className="small muted">
@@ -501,7 +494,7 @@ export function Itinerary({
                 주소·영업 정보 확인 ↗
               </a>
             )}
-            {real && !shared && (
+            {!shared && (
               <label className="field small">
                 {stop.title} 체류 시간(분)
                 <input

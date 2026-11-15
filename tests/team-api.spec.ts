@@ -330,7 +330,7 @@ test('행사 코스를 브라우저 편집본으로 저장하고 지도·도움�
     .getByRole('link', { name: '코스 조건 바꾸기 →', exact: true })
     .click()
   await expect(
-    page.getByRole('heading', { name: '실제 장소로 하루를 연결해요' }),
+    page.getByRole('heading', { name: '나만의 하루 일정 만들기' }),
   ).toBeVisible()
   await expect(page.getByLabel('선택 장소 체류 시간(분)')).toHaveValue('90')
   await page

@@ -1,0 +1,168 @@
+.day-time-settings,
+.day-plan-preview {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.day-time-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.day-time-heading h2 {
+  font-size: 18px;
+  line-height: 1.5;
+}
+.day-time-heading > span {
+  font-size: 11px;
+  color: #7c879c;
+  white-space: nowrap;
+}
+.day-time-inputs {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 12px minmax(0, 1fr);
+  gap: 8px;
+  align-items: end;
+}
+.day-time-inputs > span {
+  padding-bottom: 14px;
+  color: #8b95ab;
+}
+.day-time-settings .field {
+  min-width: 0;
+}
+.day-time-settings input {
+  min-width: 0;
+  width: 100%;
+}
+.day-time-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.day-time-presets button {
+  border: 1px solid #e0e5f2;
+  border-radius: 18px;
+  padding: 8px 10px;
+  color: #53617b;
+  background: #fff;
+  font-size: 12px;
+}
+.day-time-presets button[aria-pressed='true'] {
+  color: #2849b2;
+  background: #edf2ff;
+  border-color: #a6b8ef;
+  font-weight: 700;
+}
+.day-window-caption {
+  border-radius: 10px;
+  background: #edf2ff;
+  color: #2849b2;
+  font-size: 13px;
+  padding: 12px;
+}
+.day-window-caption.invalid {
+  color: #9b4033;
+  background: #fff0ec;
+}
+.day-plan-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 16px 0;
+  border-top: 1px solid #e7ebf4;
+  border-bottom: 1px solid #e7ebf4;
+}
+.day-plan-stats > div {
+  display: grid;
+  gap: 6px;
+}
+.day-plan-stats span {
+  color: #7c879c;
+  font-size: 11px;
+}
+.day-plan-stats strong {
+  color: #2849b2;
+  font-size: 15px;
+}
+.day-plan-stats .over-budget strong,
+.day-plan-warning {
+  color: #a03e32;
+}
+.day-plan-warning {
+  font-size: 13px;
+  line-height: 1.7;
+  background: #fff2ed;
+  padding: 12px;
+  border-radius: 10px;
+}
+.day-plan-stops {
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0;
+}
+.day-plan-stops li {
+  position: relative;
+  display: flex;
+  gap: 12px;
+  padding-bottom: 20px;
+}
+.day-plan-stops li:last-child {
+  padding-bottom: 0;
+}
+.day-plan-stops li:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 12px;
+  top: 24px;
+  height: calc(100% - 24px);
+  border-left: 2px solid #e4eaf8;
+}
+.day-plan-dot {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  color: #2849b2;
+  background: #edf2ff;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  flex: none;
+}
+.day-plan-time {
+  font-size: 12px;
+  color: #2849b2;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.day-plan-stops strong {
+  font-size: 14px;
+}
+.day-plan-stops .muted {
+  margin-top: 4px;
+}
+.day-time-editor summary {
+  cursor: pointer;
+  color: #2849b2;
+  font-size: 14px;
+  font-weight: 700;
+}
+.day-time-editor summary > span {
+  float: right;
+  font-size: 12px;
+  color: #7c879c;
+  font-weight: 400;
+}
+.day-time-editor form {
+  margin-top: 20px;
+}
+@media (max-width: 359px) {
+  .day-time-inputs {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .day-time-inputs > span {
+    display: none;
+  }
+}
