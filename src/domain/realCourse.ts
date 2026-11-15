@@ -20,6 +20,9 @@ export function realPlace(
 ): Place {
   return {
     id: `kakao:${place.id}`,
+    crowdingPlaceId: place.crowdingPlaceId,
+    crowding: place.crowding,
+    crowdingUnavailable: place.crowdingUnavailable,
     name: place.name,
     description: place.category,
     category: placeCategory(place),

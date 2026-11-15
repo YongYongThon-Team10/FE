@@ -95,9 +95,17 @@ export function NavIcon({
   name,
   active = false,
 }: {
-  name: 'search' | 'heart' | 'flow'
+  name: 'search' | 'heart' | 'flow' | 'my'
   active?: boolean
 }) {
+  if (name === 'my')
+    return (
+      <img
+        className={`nav-icon my-nav-icon ${active ? 'selected' : ''}`}
+        src="/figma/current-saved-empty-imgGroup8.svg"
+        alt=""
+      />
+    )
   const file =
     name === 'heart' && active
       ? 'saved-imgHeart'

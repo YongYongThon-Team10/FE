@@ -1,3 +1,4 @@
+import { PlaceCrowding } from '@/components/PlaceCrowding'
 import { useState } from 'react'
 import { useResource } from '@/hooks/useResource'
 import { searchEvents } from '@/services/teamBackend/search'
@@ -81,6 +82,7 @@ export function Search({
                       {e.name}
                     </a>
                   </h3>
+                  <PlaceCrowding place={{ id: e.eventId, name: e.name }} />
                   <p>
                     {e.startDate ?? '날짜 미확인'} ~{' '}
                     {e.endDate ?? '날짜 미확인'}

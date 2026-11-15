@@ -8,6 +8,7 @@ import type { Category, Place } from '@/domain/models'
 import { createRealCourse } from '@/domain/realCourse'
 import { useApp } from '@/state/context'
 import { PlacePhoto } from '@/components/PlacePhoto'
+import { PlaceCrowding } from '@/components/PlaceCrowding'
 import { isSupportingFacility } from '@/domain/placeSelection'
 const PlaceMap = lazy(() => import('@/components/PlaceMap'))
 const category = (place: SearchPlace): Category =>
@@ -58,6 +59,7 @@ export function PlaceCard({ place }: { place: SearchPlace }) {
             </a>
           </h2>
         </div>
+        <PlaceCrowding place={place} />
       </div>
       <p className="small">{place.roadAddress || place.address}</p>
       {place.roadAddress && (

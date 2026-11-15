@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
+import type { CSSProperties } from 'react'
 import { useApp } from '../state/context'
-import { categories, categoryNames } from '../domain/models'
+import { categoryNames } from '../domain/models'
 import {
   cafeOptions,
   cuisineOptions,
@@ -9,6 +10,7 @@ import {
 } from '../domain/taste'
 import type { TasteProfile } from '../domain/taste'
 import { intelligence, intelligenceMode } from '../services/intelligence'
+import { Settings } from './Settings'
 
 export function MyPage() {
   const app = useApp()
@@ -86,16 +88,20 @@ export function MyPage() {
   }
   return (
     <div className="stack personalization-page">
-      <section className="panel stack">
-        <p className="eyebrow">MY PREFERENCES</p>
-        <h1>나의 취향으로 찾는 하루</h1>
-        <p>
-          {app.user ? `${app.user.name}님의 선호도` : '게스트 선호도'}를 추천에
-          반영해요.
-        </p>
+      <h1 className="sr-only">마이페이지</h1>
+      <Settings embedded />
+      <section
+        className="panel stack"
+        id="my-preferences"
+        aria-labelledby="my-preferences-title"
+      >
+        <h2 id="my-preferences-title" tabIndex={-1}>
+          나의 취향으로 찾는 하루
+        </h2>
+        <p>{app.user?.name ?? '남곽춘'}님의 선호도를 추천에 반영해요.</p>
         <p className="small muted">
-          카테고리 관심도와 음식, 카페 취향을 함께 선택해 주세요. 로그인
-          계정별로 이 브라우저의 선호도를 구분해 보관해요.
+          관심 있는 장소와 음식, 카페 취향을 골라 주세요. 저장한 취향은 다음
+          추천에 반영돼요.
         </p>
         <a className="secondary" href="#/recommendations">
           맞춤 추천 보기
@@ -108,15 +114,44 @@ export function MyPage() {
           void save()
         }}
       >
-        <section className="panel form-stack">
-          <h2>카테고리별 관심도</h2>
-          <p className="tiny muted">0은 낮은 관심, 5는 높은 관심이에요.</p>
-          {categories.map((category) => (
-            <label className="field" key={category}>
-              {categoryNames[category]}
-              <select
+        <section
+          className="panel interest-panel"
+          aria-labelledby="interest-title"
+        >
+          <div className="interest-heading">
+            <h2 id="interest-title">카테고리 관심도</h2>
+            <span>0 낮음 — 5 높음</span>
+          </div>
+          {(
+            ['park', 'culture', 'food', 'cafe', 'sports', 'shopping'] as const
+          ).map((category) => (
+            <label className="interest-row" key={category}>
+              <span>
+                {
+                  {
+                    park: '공원·자연',
+                    culture: '문화·체험',
+                    food: '맛집',
+                    cafe: '카페',
+                    sports: '운동',
+                    shopping: '쇼핑',
+                  }[category]
+                }
+              </span>
+              <input
+                className="interest-range"
+                type="range"
+                min={0}
+                max={5}
+                step={1}
                 aria-label={`${categoryNames[category]} 관심도`}
+                aria-valuetext={`${draft.categoryWeights[category]}점, 5점 만점`}
                 value={draft.categoryWeights[category]}
+                style={
+                  {
+                    '--interest-fill': `${draft.categoryWeights[category] * 20}%`,
+                  } as CSSProperties
+                }
                 onChange={(event) =>
                   setDraft({
                     ...draft,
@@ -126,13 +161,10 @@ export function MyPage() {
                     },
                   })
                 }
-              >
-                {[0, 1, 2, 3, 4, 5].map((weight) => (
-                  <option key={weight} value={weight}>
-                    {weight} / 5
-                  </option>
-                ))}
-              </select>
+              />
+              <output aria-hidden="true">
+                {draft.categoryWeights[category]}
+              </output>
             </label>
           ))}
         </section>
@@ -237,13 +269,8 @@ export function MyPage() {
           {app.tasteStorageError || message}
         </p>
       )}
-      <p className="tiny muted">
-        {intelligenceMode === 'mock'
-          ? '시연 모드는 계정 서버에 전송하지 않고 브라우저에서 추천 흐름을 확인해요.'
-          : '추천 요청에 현재 선호도를 전달해요. 계정 동기화는 로그인 후 사용할 수 있어요.'}
-      </p>
-      <a className="text-button" href="#/settings">
-        계정과 앱 설정
+      <a className="text-button" href="#/guide">
+        서비스 이용 가이드
       </a>
     </div>
   )

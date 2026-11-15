@@ -8,6 +8,9 @@ import { useApp } from '@/state/context'
 import { go } from '@/hooks/useRoute'
 import { PlacePhoto } from '@/components/PlacePhoto'
 import { BasicCoursePlan } from './BasicCoursePlan'
+import { PlaceCrowding } from '@/components/PlaceCrowding'
+import { previewCrowding } from '@/data/crowdingPreview'
+import { intelligenceMode } from '@/services/intelligence'
 
 type NearbyState = {
   key: string
@@ -233,19 +236,32 @@ export function RealCoursePlan({ course }: { course: Course }) {
               onChange={(event) => change(event.target.value)}
             >
               <option value="">코스에서 제외</option>
-              {list.map((place) => (
-                <option key={place.id} value={place.id}>
-                  {place.name}
-                  {place.distanceMeters != null
-                    ? ` · ${Math.round(place.distanceMeters)}m`
-                    : ''}
-                </option>
-              ))}
+              {list.map((place) => {
+                const crowding =
+                  place.crowding ??
+                  (intelligenceMode === 'mock' &&
+                  !place.crowdingUnavailable &&
+                  !place.crowdingPlaceId
+                    ? previewCrowding(place.name)
+                    : null)
+                return (
+                  <option key={place.id} value={place.id}>
+                    {place.name}
+                    {place.distanceMeters != null
+                      ? ` · ${Math.round(place.distanceMeters)}m`
+                      : ''}
+                    {crowding
+                      ? ` · ${crowding.current.label}${crowding.dataMode === 'simulation' ? ' (예시)' : ''}`
+                      : ' · 혼잡도 정보 없음'}
+                  </option>
+                )
+              })}
             </select>
           </label>
           {value && (
             <>
               <p className="small">{value.roadAddress || value.address}</p>
+              <PlaceCrowding key={value.id} place={value} />
               <a
                 className="small blue"
                 href={value.url}
@@ -279,6 +295,7 @@ export function RealCoursePlan({ course }: { course: Course }) {
         <p className="eyebrow">선택한 장소</p>
         <h2>{anchor.name}</h2>
         <p className="small">{anchor.address}</p>
+        <PlaceCrowding place={anchor} />
       </section>
       <form
         className="form-stack"

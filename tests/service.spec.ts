@@ -359,7 +359,7 @@ test('새 검색과 전체 보기는 이전 조건을 초기화하고 행사명�
     .getByRole('navigation')
     .getByRole('link', { name: '행사 찾기' })
     .click()
-  await page.getByRole('link', { name: '행사 전체 보기' }).click()
+  await page.getByRole('button', { name: '검색', exact: true }).click()
   await expect(page.locator('.event-card')).toHaveCount(5)
   await page
     .getByRole('navigation')

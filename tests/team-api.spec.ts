@@ -5,6 +5,25 @@ const examples = JSON.parse(
 )
 const ok = (data: unknown) => ({ data, error: { code: null, message: null } })
 
+test('직접 시작한 BE 로그인은 성공 후 로그인된 프로필의 MY로 돌아온다', async ({
+  page,
+}) => {
+  await page.route('https://be.example.test/api/v1/auth/signin', (route) =>
+    route.fulfill({ json: examples['1'] }),
+  )
+  await page.goto('/#/login?return=%2Fmypage')
+  await page
+    .getByPlaceholder('이메일', { exact: true })
+    .fill('user@example.com')
+  await page.getByPlaceholder('비밀번호', { exact: true }).fill('password123')
+  await page.getByRole('button', { name: '로그인', exact: true }).click()
+  await expect(page).toHaveURL(/#\/mypage$/)
+  await expect(page.getByRole('region', { name: '내 프로필' })).toBeVisible()
+  await expect(
+    page.getByRole('navigation').getByRole('link', { name: 'MY', exact: true }),
+  ).toHaveAttribute('aria-current', 'page')
+})
+
 test('BE 통신 실패에도 장소 검색은 유지하고 재시도로 행사 정보를 복구한다', async ({
   page,
 }) => {

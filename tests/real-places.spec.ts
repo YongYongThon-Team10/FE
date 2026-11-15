@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { mockCrowding, demoTimes } from '../src/data/intelligenceDemo'
 const place = (id: string, name: string) => ({
   id,
   name,
@@ -19,6 +20,61 @@ const result = (q: string, page = 1, empty = false) => ({
   pageableCount: 2,
   source: '카카오맵',
   fetchedAt: '2026-11-14T07:00:00Z',
+})
+
+test('선택 전에 혼잡도와 시연 여부를 표시하고 누락·잘못된 데이터에도 코스를 만든다', async ({
+  page,
+}) => {
+  await page.route('**/api/places?*', (route) =>
+    route.fulfill({
+      json: {
+        ...result('혼잡도'),
+        places: [
+          {
+            ...place('1', '혼잡도 제공 장소'),
+            crowding: mockCrowding('demo_park_01', demoTimes[0]),
+          },
+          place('2', '혼잡도 미제공 장소'),
+          {
+            ...place('3', '혼잡도 오류 장소'),
+            crowding: { current: { occupancyPercent: 100 } },
+          },
+        ],
+      },
+    }),
+  )
+  await page.route('**/api/nearby?*', (route) =>
+    route.fulfill({ json: result('근처', 1, true) }),
+  )
+  await page.goto('/#/places?q=혼잡도')
+  const cards = page.locator('.live-place-card')
+  await expect(page.getByRole('meter')).toHaveCount(0)
+  await cards
+    .nth(0)
+    .getByRole('button', { name: /혼잡도: 약간 붐빔/ })
+    .click()
+  const panel = page.getByRole('dialog', { name: '혼잡도 상세' })
+  await expect(panel).toContainText('72.5%')
+  await expect(panel).toContainText('목업 예시')
+  await panel.getByRole('button', { name: '닫기', exact: true }).click()
+  await cards.nth(1).locator('.crowding-trigger').click()
+  await expect(panel.getByRole('meter')).toBeVisible()
+  await expect(panel).toContainText('목업 예시')
+  await panel.getByRole('button', { name: '닫기', exact: true }).click()
+  await expect(cards.nth(2).locator('.crowding-trigger')).toHaveText(
+    '정보 없음',
+  )
+  await cards
+    .nth(0)
+    .getByRole('button', { name: /로 하루 코스 만들기/ })
+    .click()
+  await expect(page.getByRole('meter')).toHaveCount(0)
+  await page.getByRole('button', { name: /혼잡도: 약간 붐빔/ }).click()
+  await expect(panel).toContainText('72.5%')
+  await panel.getByRole('button', { name: '닫기', exact: true }).click()
+  await expect(
+    page.getByRole('button', { name: '이 장소들로 하루 코스 만들기' }),
+  ).toBeEnabled()
 })
 
 test('검색의 편의시설은 조회를 유지하고 코스 목적지 선택에서는 제외한다', async ({
@@ -128,73 +184,27 @@ test('실제 장소 모드의 설정·도움말에는 시연 데이터 푸터를
   }
 })
 
-test('홈 추천은 대표 명소 본체만 표시하고 주차장과 부대시설을 제외한다', async ({
+test('검색으로 고른 대표 명소의 사진은 코스와 새로고침 후에도 유지된다', async ({
   page,
 }) => {
-  const names = [
-    '에버랜드',
-    '한국민속촌',
-    '호암미술관',
-    '와우정사',
-    '용인농촌테마파크',
-    '한택식물원',
-  ]
-  await page.route('**/api/places?*', (route) => {
-    const q = new URL(route.request().url()).searchParams.get('q')!
-    const index = names.indexOf(q)
-    return route.fulfill({
+  await page.route('**/api/places?*', (route) =>
+    route.fulfill({
       json: {
-        ...result(q),
-        places: [
-          {
-            ...place(`${index + 100}`, `${q} 공영주차장`),
-            categoryGroup: 'PK6',
-            category: '교통 > 주차장',
-          },
-          {
-            ...place(`${index + 200}`, `${q} 방문자센터`),
-            categoryGroup: 'AT4',
-          },
-          {
-            ...place(`${index + 300}`, q),
-            categoryGroup:
-              q === '와우정사' ? '' : q === '호암미술관' ? 'CT1' : 'AT4',
-            category:
-              q === '와우정사'
-                ? '문화,예술 > 종교 > 불교 > 절,사찰'
-                : '여행 > 관광,명소',
-          },
-        ],
+        ...result('한국민속촌'),
+        places: [place('1', '한국민속촌')],
       },
-    })
-  })
+    }),
+  )
+  await page.route('**/api/nearby?*', (route) =>
+    route.fulfill({ json: result('근처', 1, true) }),
+  )
   await page.goto('/#/')
-  await expect(page.locator('.live-place-card')).toHaveCount(6)
-  for (const image of await page
-    .locator('.live-place-card .place-photo img')
-    .all()) {
-    await image.scrollIntoViewIfNeeded()
-    await expect
-      .poll(() =>
-        image.evaluate((img) => (img as HTMLImageElement).naturalWidth),
-      )
-      .toBeGreaterThan(0)
-  }
-  for (const name of names)
-    await expect(
-      page.getByRole('link', { name: `${name} ↗`, exact: true }),
-    ).toBeVisible()
-  await expect(page.locator('.home-recommendations')).not.toContainText(
-    '공영주차장',
-  )
-  await expect(page.locator('.home-recommendations')).not.toContainText(
-    '방문자센터',
-  )
+  await page.getByLabel('어떤 하루를 보내고 싶으세요?').fill('한국민속촌')
+  await page.getByRole('button', { name: '검색', exact: true }).click()
   await page
     .getByRole('button', { name: '한국민속촌로 하루 코스 만들기' })
     .click()
   await expect(page).toHaveURL(/#\/plan\//)
-  await expect(page.locator('body')).toContainText('한국민속촌')
   await expect(
     page.getByRole('img', { name: '한국민속촌 대표 사진' }),
   ).toHaveAttribute('src', '/landmarks/folk-village.webp')
@@ -291,26 +301,45 @@ test('알 수 없는 장소의 사진 실패는 깨진 이미지 없이 검색�
   await expect(page).toHaveURL(/#\/plan\//)
 })
 
-test('명소 검색 일부 실패 시 확인된 명소만 표시하며 모두 실패하면 재시도 안내', async ({
+test('랜딩은 검색 아래 추천 장소를 표시하고 선호도는 MY에서 설정한다', async ({
   page,
 }) => {
-  let allFailed = false
   await page.route('**/api/places?*', (route) => {
     const q = new URL(route.request().url()).searchParams.get('q')!
-    return q === '에버랜드' && !allFailed
-      ? route.fulfill({ json: { ...result(q), places: [place('10', q)] } })
-      : route.fulfill({ status: 502, json: { error: '연결 실패' } })
+    const names = [
+      '에버랜드',
+      '한국민속촌',
+      '호암미술관',
+      '와우정사',
+      '용인농촌테마파크',
+      '한택식물원',
+    ]
+    return route.fulfill({
+      json: { ...result(q), places: [place(String(names.indexOf(q) + 1), q)] },
+    })
   })
   await page.goto('/#/')
-  await expect(page.locator('.live-place-card')).toHaveCount(1)
-  await expect(page.locator('.live-place-card')).toContainText('에버랜드')
-  allFailed = true
-  await page.reload()
-  await expect(page.getByRole('alert')).toContainText(
-    '대표 명소 정보를 불러오지 못했어요',
+  await expect(page.getByRole('search')).toBeVisible()
+  await expect(
+    page.locator('.home-recommendations .live-place-card'),
+  ).toHaveCount(6)
+  const searchBox = await page.getByRole('search').boundingBox()
+  const recommendationsBox = await page
+    .locator('.home-recommendations')
+    .boundingBox()
+  expect(recommendationsBox!.y).toBeGreaterThan(
+    searchBox!.y + searchBox!.height,
   )
-  await expect(page.locator('.live-place-card')).toHaveCount(0)
+  await expect(
+    page.getByRole('region', { name: '취향 기반 추천' }),
+  ).toHaveCount(0)
+  await page
+    .getByRole('navigation')
+    .getByRole('link', { name: 'MY', exact: true })
+    .click()
+  await expect(page.getByLabel('카페 관심도', { exact: true })).toBeVisible()
 })
+
 test('실제 검색 모드 홈 → 검색 → 지도 마커·상세 → 페이지 이동과 새로고침', async ({
   page,
 }) => {
@@ -325,9 +354,7 @@ test('실제 검색 모드 홈 → 검색 → 지도 마커·상세 → 페이�
   })
   await page.goto('/#/')
   await expect(page).toHaveTitle('용인데이')
-  await expect(
-    page.getByRole('heading', { name: '처음이라면, 용인 대표 명소' }),
-  ).toBeVisible()
+  await expect(page.getByRole('search')).toBeVisible()
   await expect(page.locator('body')).not.toContainText('시연 데이터')
   await page.getByLabel('어떤 하루를 보내고 싶으세요?').fill('용인중앙시장')
   await page.getByRole('button', { name: '검색', exact: true }).click()

@@ -1,4 +1,5 @@
 import type { ImageFields } from './images'
+import type { CrowdingFields } from './personalization'
 export const categories = [
   'park',
   'food',
@@ -31,20 +32,21 @@ export type Source = {
   updatedAt: string
   isDemo: boolean
 }
-export type Place = ImageFields & {
-  id: string
-  name: string
-  description: string
-  category: Category
-  district: string
-  address: string
-  location: Coordinate | null
-  imageUrl: string | null
-  price: number | null
-  durationMinutes: number
-  openingHours: string
-  source: Source
-}
+export type Place = ImageFields &
+  CrowdingFields & {
+    id: string
+    name: string
+    description: string
+    category: Category
+    district: string
+    address: string
+    location: Coordinate | null
+    imageUrl: string | null
+    price: number | null
+    durationMinutes: number
+    openingHours: string
+    source: Source
+  }
 export type Event = Place & {
   startsAt: string
   endsAt: string

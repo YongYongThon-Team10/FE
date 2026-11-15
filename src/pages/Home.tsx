@@ -1,16 +1,16 @@
 import { SERVICE_NAME } from '@/config/brand'
 import { useEffect, useRef, useState } from 'react'
 import { EventCard } from '@/components/EventCard'
+import { Places } from './Places'
 import { emptyFilters } from '@/domain/models'
 import { useApp } from '@/state/context'
 import { go } from '@/hooks/useRoute'
 import { interpretSearch } from '@/services/search'
 import { livePlaces } from '@/services/places'
-import { Places } from './Places'
 import { teamBackend } from '@/services/teamBackend'
 
 export function Home() {
-  const { setFilters, data } = useApp()
+  const { setFilters, data, error, reload } = useApp()
   const [text, setText] = useState('')
   const [searching, setSearching] = useState(false)
   const [message, setMessage] = useState('')
@@ -122,18 +122,6 @@ export function Home() {
           </p>
         )}
       </section>
-      <section className="panel stack" aria-label="취향 기반 추천">
-        <h2>내 취향으로 찾는 하루</h2>
-        <p className="small muted">
-          좋아하는 카테고리, 맛집과 카페 취향에 예상 혼잡도를 더해 추천해요.
-        </p>
-        <a className="primary" href="#/recommendations">
-          취향 맞춤 추천 보기
-        </a>
-        <a className="text-button small" href="#/mypage">
-          마이페이지에서 취향 설정
-        </a>
-      </section>
       <section
         className="home-recommendations stack"
         aria-labelledby="home-recommendations-title"
@@ -168,6 +156,24 @@ export function Home() {
         )}
         {livePlaces && <Places embedded />}
         {!livePlaces &&
+          !data &&
+          (error ? (
+            <p className="error small" role="alert">
+              추천 행사를 불러오지 못했어요.{' '}
+              <button
+                type="button"
+                className="text-button"
+                onClick={() => void reload()}
+              >
+                추천 다시 불러오기
+              </button>
+            </p>
+          ) : (
+            <p className="small muted" role="status">
+              추천 행사를 찾고 있어요…
+            </p>
+          ))}
+        {!livePlaces &&
           data?.events
             .slice(0, 5)
             .map((event) => <EventCard key={event.id} event={event} />)}
@@ -177,11 +183,6 @@ export function Home() {
           </p>
         )}
       </section>
-      <p className="small muted">
-        {livePlaces
-          ? '마음에 드는 장소를 지도에서 확인하고 나들이를 준비해 보세요.'
-          : '마음에 드는 행사를 골라 하루 일정을 만들어 보세요.'}
-      </p>
     </>
   )
 }

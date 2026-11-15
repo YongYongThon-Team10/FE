@@ -1,3 +1,4 @@
+import { PlaceCrowding } from '@/components/PlaceCrowding'
 import { useEffect, useRef, useState } from 'react'
 import { teamBackend } from '@/services/teamBackend'
 import type {
@@ -206,6 +207,7 @@ function FestivalList() {
               <p className="small">
                 {e.placeName ?? e.address ?? '장소 정보 없음'}
               </p>
+              <PlaceCrowding place={{ id: e.eventId, name: e.name }} />
               <p className="small">
                 {e.fee ?? (e.isFree === true ? '무료' : '요금 정보 없음')}
               </p>
@@ -265,6 +267,7 @@ function FestivalDetail({ id }: { id: string }) {
       </a>
       <PlacePhoto name={e.name} image={e} placeholder />
       <h1>{e.name}</h1>
+      <PlaceCrowding place={{ id: e.eventId, name: e.name }} />
       <p>
         {e.subCategory || e.category} / {info.dateStatus}
       </p>

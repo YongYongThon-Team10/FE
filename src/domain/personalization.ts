@@ -26,6 +26,11 @@ export type CrowdingEstimate = {
   forecast: CrowdingWindow[]
   warnings: { code: string; message: string }[]
 }
+export type CrowdingFields = {
+  crowdingUnavailable?: boolean
+  crowdingPlaceId?: string | null
+  crowding?: CrowdingEstimate | null
+}
 export type RecommendationCandidate = {
   id: string
   name: string

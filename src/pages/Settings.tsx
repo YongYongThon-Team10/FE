@@ -15,6 +15,11 @@ export function Login({
   mode?: 'login' | 'register' | 'reset'
 }) {
   const app = useApp()
+  const returnPath = new URLSearchParams(
+    window.location.hash.split('?')[1],
+  ).get('return')
+  const afterLogin = returnPath === '/mypage' ? '/mypage' : '/'
+  const authSuffix = returnPath === '/mypage' ? '?return=%2Fmypage' : ''
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
@@ -28,12 +33,12 @@ export function Login({
       if (mode === 'login') {
         app.setUser(await api.login(email, password))
         setPassword('')
-        go('/')
+        go(afterLogin)
       } else if (mode === 'register') {
         await api.register(email, password, name)
         if (teamBackend.enabled) {
           app.setUser(await api.session())
-          go('/')
+          go(afterLogin)
         } else
           setMessage('회원가입 요청이 완료됐어요. 이메일 안내를 확인해 주세요.')
         setPassword('')
@@ -140,7 +145,11 @@ export function Login({
           {message}
         </p>
       )}
-      <button className="secondary" type="button" onClick={() => go('/')}>
+      <button
+        className="secondary"
+        type="button"
+        onClick={() => go(afterLogin)}
+      >
         게스트로 입장
       </button>
       {isAuthDemo && (
@@ -149,24 +158,25 @@ export function Login({
           type="button"
           onClick={() => {
             app.demoLogin()
-            go('/saved')
+            go(returnPath === '/mypage' ? '/mypage' : '/saved')
           }}
         >
           시연 계정으로 둘러보기
         </button>
       )}
       <div className="row auth-links">
-        <a href="#/reset-password">비밀번호 찾기</a>
+        <a href={`#/reset-password${authSuffix}`}>비밀번호 찾기</a>
         <span>·</span>
-        <a href="#/register">회원가입</a>
+        <a href={`#/register${authSuffix}`}>회원가입</a>
         <span>·</span>
-        <a href="#/login">로그인</a>
+        <a href={`#/login${authSuffix}`}>로그인</a>
       </div>
     </div>
   )
 }
-export function Settings() {
-  const { user, setUser, setToast } = useApp()
+export function Settings({ embedded = false }: { embedded?: boolean }) {
+  const app = useApp()
+  const { user, setUser, setToast } = app
   const [logout, setLogout] = useState(
     new URLSearchParams(window.location.hash.split('?')[1]).get('dialog') ===
       'logout',
@@ -189,23 +199,50 @@ export function Settings() {
   }
   return (
     <>
-      <section className="panel stack">
-        <p className="tiny muted">내 계정</p>
-        <h2>로그인 정보</h2>
-        <p className="tiny muted">
-          {user
-            ? `${user.name}님의 연결된 계정을 확인해요.`
-            : '게스트로 둘러보고 있어요.'}
-        </p>
-        <a className="list-link tinted" href="#/account">
-          계정 정보 보기<span>›</span>
-        </a>
-        <a className="list-link" href="#/mypage">
-          마이페이지와 추천 선호도<span>›</span>
-        </a>
-      </section>
+      {embedded ? (
+        <section className="panel stack my-member-card" aria-label="내 프로필">
+          <div className="row">
+            <span className="my-member-avatar">
+              <img src="/figma/current-saved-empty-imgGroup8.svg" alt="" />
+            </span>
+            <div>
+              <p className="tiny muted">나의 프로필</p>
+              <h2>{user?.name ?? '남곽춘'}님</h2>
+            </div>
+          </div>
+          <p className="small muted">오늘도 나에게 맞는 하루를 찾아보세요.</p>
+          <div className="my-member-stats">
+            <a href="#/saved">
+              <strong>{app.courses.length}</strong>
+              <span>저장한 코스</span>
+            </a>
+            <span>
+              <strong>{app.favorites.length}</strong>
+              <span>관심 행사</span>
+            </span>
+          </div>
+        </section>
+      ) : (
+        <section className="panel stack">
+          <p className="tiny muted">내 계정</p>
+          <h2>로그인 정보</h2>
+          <p className="tiny muted">
+            {user
+              ? `${user.name}님의 연결된 계정을 확인해요.`
+              : '게스트로 둘러보고 있어요.'}
+          </p>
+          <a className="list-link tinted" href="#/account">
+            계정 정보 보기<span>›</span>
+          </a>
+          <a className="list-link" href="#/mypage">
+            마이페이지와 추천 선호도<span>›</span>
+          </a>
+        </section>
+      )}
       <section className="stack">
-        <h2 className="group-title">앱 설정</h2>
+        <h2 className="group-title">
+          {embedded ? '내 정보와 설정' : '앱 설정'}
+        </h2>
         <div className="list-panel">
           <a className="list-link" href="#/notifications">
             알림 설정<span>›</span>
@@ -213,20 +250,40 @@ export function Settings() {
           <a className="list-link" href="#/privacy">
             개인정보 관리<span>›</span>
           </a>
+          {embedded && (
+            <button
+              type="button"
+              className="list-link"
+              onClick={() =>
+                document
+                  .getElementById('my-preferences')
+                  ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }
+            >
+              취향·선호도 설정<span>↓</span>
+            </button>
+          )}
+          {embedded && (
+            <a className="list-link" href="#/settings">
+              알림·도움말 및 앱 설정<span>›</span>
+            </a>
+          )}
         </div>
       </section>
-      <section className="stack">
-        <h2 className="group-title">도움말</h2>
-        <div className="list-panel">
-          <a className="list-link" href="#/notices">
-            공지사항<span>›</span>
-          </a>
-          <a className="list-link" href="#/contact">
-            문의하기<span>›</span>
-          </a>
-        </div>
-      </section>
-      {user ? (
+      {!embedded && (
+        <section className="stack">
+          <h2 className="group-title">도움말</h2>
+          <div className="list-panel">
+            <a className="list-link" href="#/notices">
+              공지사항<span>›</span>
+            </a>
+            <a className="list-link" href="#/contact">
+              문의하기<span>›</span>
+            </a>
+          </div>
+        </section>
+      )}
+      {!embedded && user ? (
         <button
           className="secondary danger"
           type="button"
@@ -234,11 +291,11 @@ export function Settings() {
         >
           로그아웃
         </button>
-      ) : (
+      ) : !embedded ? (
         <a className="secondary" href="#/login">
           로그인하기
         </a>
-      )}
+      ) : null}
       <p className="tiny settings-caption">내 계정을 안전하게 관리하세요.</p>
       {logout && (
         <Modal

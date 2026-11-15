@@ -216,6 +216,22 @@ function Shell() {
   const action =
     ['configure', 'course', 'shared'].includes(section) ||
     (section === 'events' && !!id)
+  const myArea = [
+    'mypage',
+    'settings',
+    'notifications',
+    'privacy',
+    'account',
+    'notices',
+    'contact',
+    'contact-complete',
+    'logout-complete',
+    'guide',
+    'help',
+  ].includes(section)
+  const savedArea = ['saved', 'saved-courses', 'delete-course'].includes(
+    section,
+  )
   useEffect(() => {
     document.title = SERVICE_NAME
     window.scrollTo({ top: 0 })
@@ -433,22 +449,20 @@ function Shell() {
     default:
       content = <Missing />
   }
-  const needsCatalog =
-    [
-      'home',
-      'events',
-      'map',
-      'sources',
-      'configure',
-      'event-map',
-      'conditions',
-      'generating',
-      'origin',
-      'replace',
-      'manual',
-      'differences',
-      'calendar',
-    ].includes(section) && !(livePlaces && section === 'home')
+  const needsCatalog = [
+    'events',
+    'map',
+    'sources',
+    'configure',
+    'event-map',
+    'conditions',
+    'generating',
+    'origin',
+    'replace',
+    'manual',
+    'differences',
+    'calendar',
+  ].includes(section)
   if (section === 'facilities')
     return (
       <div className="app-shell facility-shell">
@@ -572,7 +586,7 @@ function Shell() {
           ) : (
             content
           )}
-          {!auth && (
+          {!auth && section !== 'home' && (
             <footer className="data-footer">
               {teamBackend.enabled &&
               [
@@ -625,23 +639,10 @@ function Shell() {
                 '/',
                 'search',
                 livePlaces ? '장소 찾기' : '행사 찾기',
-                !settingsArea &&
-                  section !== 'saved-courses' &&
-                  section !== 'guide' &&
-                  section !== 'help',
+                !myArea && !savedArea,
               ],
-              [
-                '/saved',
-                'heart',
-                '내 코스',
-                settingsArea || section === 'saved-courses',
-              ],
-              [
-                '/guide',
-                'flow',
-                '화면 흐름',
-                section === 'guide' || section === 'help',
-              ],
+              ['/saved', 'heart', '내 코스', savedArea],
+              ['/mypage', 'my', 'MY', myArea],
             ] as const
           ).map(([path, icon, label, active]) => (
             <a

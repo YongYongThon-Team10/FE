@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useId, useRef } from 'react'
 import type { ReactNode } from 'react'
 
 export function Modal({
@@ -6,13 +6,16 @@ export function Modal({
   children,
   onClose,
   eyebrow,
+  className = '',
 }: {
   title: string
   children: ReactNode
   onClose: () => void
   eyebrow?: string
+  className?: string
 }) {
   const ref = useRef<HTMLDialogElement>(null)
+  const titleId = useId()
   useEffect(() => {
     const dialog = ref.current
     dialog?.showModal()
@@ -23,7 +26,8 @@ export function Modal({
     <dialog
       ref={ref}
       tabIndex={-1}
-      className="modal"
+      className={`modal ${className}`}
+      aria-labelledby={titleId}
       onCancel={onClose}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
@@ -31,7 +35,7 @@ export function Modal({
     >
       {eyebrow && <p className="eyebrow">{eyebrow}</p>}
       <div className="row between">
-        <h2>{title}</h2>
+        <h2 id={titleId}>{title}</h2>
         {!eyebrow && (
           <button
             className="icon-button"

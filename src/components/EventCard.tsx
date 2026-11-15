@@ -1,3 +1,4 @@
+import { PlaceCrowding } from '@/components/PlaceCrowding'
 import type { Coordinate, Event } from '@/domain/models'
 import { distanceKm, eventDate, priceText } from '@/domain/planning'
 import { safeUrl } from '@/domain/validation'
@@ -62,6 +63,7 @@ export function EventBadges({ event }: { event: Event }) {
           안내 상이 ⓘ
         </button>
       )}
+      <PlaceCrowding place={event} />
     </div>
   )
 }

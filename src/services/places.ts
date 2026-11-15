@@ -3,18 +3,21 @@ export const placesApiBase = (import.meta.env.VITE_PLACES_API_BASE ?? '')
   .replace(/\/$/, '')
 export const livePlaces = Boolean(placesApiBase)
 import type { ImageFields } from '@/domain/images'
-export type SearchPlace = ImageFields & {
-  id: string
-  name: string
-  category: string
-  categoryGroup: string
-  address: string
-  roadAddress: string
-  phone: string
-  distanceMeters?: number | null
-  location: { lat: number; lng: number }
-  url: string
-}
+import type { CrowdingFields } from '@/domain/personalization'
+import { parseCrowding } from '@/domain/personalization'
+export type SearchPlace = ImageFields &
+  CrowdingFields & {
+    id: string
+    name: string
+    category: string
+    categoryGroup: string
+    address: string
+    roadAddress: string
+    phone: string
+    distanceMeters?: number | null
+    location: { lat: number; lng: number }
+    url: string
+  }
 export type PlaceResults = {
   places: SearchPlace[]
   query: string
@@ -84,5 +87,30 @@ async function requestPlaces(
     )
   )
     throw new Error('장소 검색 응답을 확인하지 못했어요. 다시 시도해 주세요.')
-  return value as PlaceResults
+  return {
+    ...value,
+    places: value.places.map((place: SearchPlace) => {
+      let crowding = null
+      try {
+        if (place.crowding) crowding = parseCrowding(place.crowding)
+        if (
+          place.crowdingPlaceId &&
+          crowding?.placeId !== place.crowdingPlaceId
+        )
+          crowding = null
+      } catch {
+        /* Invalid optional signals must not block place selection. */
+      }
+      return {
+        ...place,
+        crowding,
+        crowdingUnavailable: place.crowding != null && !crowding,
+        crowdingPlaceId:
+          typeof place.crowdingPlaceId === 'string' &&
+          place.crowdingPlaceId.trim()
+            ? place.crowdingPlaceId
+            : null,
+      }
+    }),
+  } as PlaceResults
 }
