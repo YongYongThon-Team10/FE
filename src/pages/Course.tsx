@@ -873,6 +873,11 @@ export function Saved({ standalone = false }: { standalone?: boolean }) {
         MY LITTLE TRIPS
       </p>
       {standalone && <h1 className="blue">다시 꺼내 보는, 나의 하루</h1>}
+      {!app.preview && (
+        <a className="secondary" href="#/mypage">
+          마이페이지에서 추천 취향 설정
+        </a>
+      )}
       {!standalone && app.courses.length > 0 && (
         <>
           <Calendar

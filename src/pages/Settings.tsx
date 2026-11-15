@@ -200,6 +200,9 @@ export function Settings() {
         <a className="list-link tinted" href="#/account">
           계정 정보 보기<span>›</span>
         </a>
+        <a className="list-link" href="#/mypage">
+          마이페이지와 추천 선호도<span>›</span>
+        </a>
       </section>
       <section className="stack">
         <h2 className="group-title">앱 설정</h2>

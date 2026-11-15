@@ -122,6 +122,18 @@ export function Home() {
           </p>
         )}
       </section>
+      <section className="panel stack" aria-label="취향 기반 추천">
+        <h2>내 취향으로 찾는 하루</h2>
+        <p className="small muted">
+          좋아하는 카테고리, 맛집과 카페 취향에 예상 혼잡도를 더해 추천해요.
+        </p>
+        <a className="primary" href="#/recommendations">
+          취향 맞춤 추천 보기
+        </a>
+        <a className="text-button small" href="#/mypage">
+          마이페이지에서 취향 설정
+        </a>
+      </section>
       <section
         className="home-recommendations stack"
         aria-labelledby="home-recommendations-title"

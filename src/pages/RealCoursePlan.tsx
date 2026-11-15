@@ -268,6 +268,12 @@ export function RealCoursePlan({ course }: { course: Course }) {
   return (
     <>
       <h1 className="blue">실제 장소로 하루를 연결해요</h1>
+      <a
+        className="secondary"
+        href={`#/recommendations?${new URLSearchParams({ lat: String(lat), lng: String(lng), name: anchor.name, categories: 'food,cafe' })}`}
+      >
+        이 장소 주변 취향 맞춤 맛집과 카페
+      </a>
       <section className="panel stack">
         <PlacePhoto name={anchor.name} image={anchor} />
         <p className="eyebrow">선택한 장소</p>

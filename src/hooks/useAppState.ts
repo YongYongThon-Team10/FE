@@ -12,6 +12,7 @@ import { parseCourse } from '@/domain/validation'
 import { courseSnapshot } from '@/domain/snapshots'
 import { useCatalog } from '@/hooks/useCatalog'
 import { useStorage } from '@/hooks/useStorage'
+import { useTasteProfile } from '@/hooks/useTasteProfile'
 import { api, isDemo, isAuthDemo } from '@/services/api'
 import { findDesignFrame } from '@/data/designFrames'
 import { designCourse, sampleSettings, sampleUser } from '@/data/scenarios'
@@ -98,6 +99,7 @@ export function useAppState(previewId?: string) {
         ? { ...sampleUser, name: '남곽춘' }
         : null,
   )
+  const taste = useTasteProfile(user?.id ?? 'guest', !preview)
   const [setup, setSetup] = useState<{
     eventId: string
     settings: CourseSettings
@@ -213,6 +215,7 @@ export function useAppState(previewId?: string) {
     )
   return {
     ...catalog,
+    ...taste,
     preview,
     setup,
     setSetup,

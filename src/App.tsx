@@ -6,6 +6,8 @@ import { useApp } from '@/state/context'
 import { PageContainer } from '@/components/PageContainer'
 import { NavIcon, Brand } from '@/components/Brand'
 import { Home } from '@/pages/Home'
+import { MyPage } from '@/pages/MyPage'
+import { Personalized } from '@/pages/Personalized'
 import { Places } from '@/pages/Places'
 import {
   TeamFestivals,
@@ -53,6 +55,7 @@ import {
 import './App.css'
 import './workflows.css'
 import './facilities.css'
+import './personalization.css'
 
 function Missing({
   message = '요청한 화면을 찾을 수 없어요.',
@@ -157,6 +160,8 @@ function Shell() {
     'event-map': '행사 위치',
     saved: app.user?.name ?? '내 코스',
     settings: '설정',
+    mypage: '마이페이지',
+    recommendations: '맞춤 추천',
     notifications: '알림 설정',
     privacy: '개인정보 관리',
     account: '로그인 정보',
@@ -195,6 +200,7 @@ function Shell() {
     'splash',
   ].includes(section)
   const settingsArea = [
+    'mypage',
     'saved',
     'settings',
     'notifications',
@@ -217,6 +223,14 @@ function Shell() {
   }, [rawRoute, title])
   let content: ReactNode
   switch (section) {
+    case 'mypage':
+      content = <MyPage key={app.user?.id ?? 'guest'} />
+      break
+    case 'recommendations':
+      content = (
+        <Personalized key={rawRoute} params={rawRoute.split('?')[1] ?? ''} />
+      )
+      break
     case 'search':
       content = teamBackend.enabled ? (
         <Search

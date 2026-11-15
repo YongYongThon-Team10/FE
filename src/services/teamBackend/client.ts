@@ -15,6 +15,8 @@ import type {
   SavedCourse,
   Tokens,
 } from './contracts'
+import type { RecommendationRequest } from '../../domain/personalization'
+import type { TasteProfile } from '../../domain/taste'
 
 type JsonObject = Record<string, unknown>
 const object = (value: unknown): value is JsonObject =>
@@ -228,6 +230,26 @@ export function createTeamBackend({
   }
   return {
     enabled: Boolean(base),
+    personalizedRecommendations: (
+      input: RecommendationRequest,
+      signal?: AbortSignal,
+    ) =>
+      call<unknown>('/api/recommendations', json(input, signal), false, 65000),
+    estimateCrowding: (placeId: string, at: string, signal?: AbortSignal) =>
+      call<unknown>(
+        '/api/crowding/estimate',
+        json({ placeId, at }, signal),
+        false,
+        25000,
+      ),
+    tasteProfile: (signal?: AbortSignal) =>
+      call<unknown>('/api/me/preferences', { signal }, true),
+    saveTasteProfile: (profile: TasteProfile, signal?: AbortSignal) =>
+      call<unknown>(
+        '/api/me/preferences',
+        { ...json(profile, signal), method: 'PUT' },
+        true,
+      ),
     identity: () => session && { email: session.email, name: session.name },
     clearSession,
     signIn: (email: string, password: string) =>
