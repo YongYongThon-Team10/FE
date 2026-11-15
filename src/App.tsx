@@ -1,23 +1,685 @@
+import { SERVICE_NAME } from '@/config/brand'
+import { Component, useEffect, useMemo } from 'react'
+import type { ErrorInfo, ReactNode } from 'react'
+import { AppProvider } from '@/state/AppContext'
+import { useApp } from '@/state/context'
 import { PageContainer } from '@/components/PageContainer'
+import { NavIcon, Brand } from '@/components/Brand'
+import { Home } from '@/pages/Home'
+import { MyPage } from '@/pages/MyPage'
+import { Personalized } from '@/pages/Personalized'
+import { Places } from '@/pages/Places'
+import {
+  TeamFestivals,
+  FestivalItinerary,
+  FestivalShared,
+} from '@/pages/TeamFestivals'
+import { RealCoursePlan } from '@/pages/RealCoursePlan'
+import { Search } from '@/pages/Search'
+import { isRealCourse } from '@/domain/realCourse'
+import { livePlaces } from '@/services/places'
+import { teamBackend } from '@/services/teamBackend'
+import { Detail, Events, Sources } from '@/pages/Events'
+import { Configure, CourseMap, Itinerary, Saved } from '@/pages/Course'
+import {
+  Account,
+  Contact,
+  Guide,
+  Login,
+  Notices,
+  Notifications,
+  Privacy,
+  Settings,
+} from '@/pages/Settings'
+import { go, useRoute } from '@/hooks/useRoute'
+import { parseCourse } from '@/domain/validation'
+import { isDemo } from '@/services/api'
+import { findDesignFrame } from '@/data/designFrames'
+import { MonthCalendar } from '@/components/MonthCalendar'
+import { DesignReview } from '@/pages/DesignReview'
+import { Facilities } from '@/pages/Facilities'
+import {
+  SearchConditions,
+  Generating,
+  Origin,
+  ReplacePlace,
+  ManualEntry,
+  SaveShare,
+  DeleteCourse,
+  Help,
+  Onboarding,
+  LogoutComplete,
+  ContactComplete,
+  Differences,
+} from '@/pages/Workflows'
 import './App.css'
+import './workflows.css'
+import './facilities.css'
+import './personalization.css'
 
-function App() {
+function Missing({
+  message = '요청한 화면을 찾을 수 없어요.',
+}: {
+  message?: string
+}) {
   return (
-    <PageContainer>
-      <p className="eyebrow">YONGYONGTHON · TEAM 10</p>
-      <h1>용인에서 보내는 하루</h1>
-      <p className="description">
-        지역 행사를 발견하고, 가고 싶은 장소를 연결해 나만의 하루를 계획합니다.
+    <section className="empty-state">
+      <Brand />
+      <h1>{message}</h1>
+      <p className="small muted">
+        정보가 변경됐거나 아직 저장되지 않은 항목일 수 있어요.
       </p>
-      <section className="starter" aria-labelledby="starter-title">
-        <h2 id="starter-title">프론트엔드 개발 준비 완료</h2>
-        <p>React + TypeScript + Vite 프로젝트입니다.</p>
-        <p>
-          검색 → 행사 상세 → 일정 담기 → 하루 코스 순서로 화면을 구현합니다.
-        </p>
-      </section>
-    </PageContainer>
+      <a className="primary" href="#/">
+        홈으로 돌아가기
+      </a>
+    </section>
   )
 }
-
-export default App
+class AppErrorBoundary extends Component<
+  { children: ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false }
+  static getDerivedStateFromError() {
+    return { failed: true }
+  }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error('화면을 표시하지 못했습니다.', error, info.componentStack)
+  }
+  render() {
+    return this.state.failed ? (
+      <section className="empty-state">
+        <h1>화면을 불러오지 못했어요</h1>
+        <p>새로고침 후 다시 시도해 주세요.</p>
+        <button className="primary" onClick={() => window.location.reload()}>
+          새로고침
+        </button>
+      </section>
+    ) : (
+      this.props.children
+    )
+  }
+}
+function Shell() {
+  const rawRoute = useRoute()
+  const route = rawRoute.split('?')[0]
+  const parts = route.split('/').filter(Boolean)
+  const section = parts[0] ?? 'home'
+  const query = new URLSearchParams(rawRoute.split('?')[1])
+  const routePage = (
+    key: string,
+    min: number,
+    max: number,
+    fallback: number,
+  ) => {
+    const value = Number(query.get(key) ?? fallback)
+    return Number.isInteger(value) && value >= min && value <= max
+      ? value
+      : fallback
+  }
+  let id = ''
+  try {
+    id = decodeURIComponent(parts[1] ?? '')
+  } catch {
+    /* malformed IDs resolve to not found */
+  }
+  const app = useApp()
+  const event = app.data?.events.find((e) => e.id === id)
+  const course =
+    app.draft?.id === id ? app.draft : app.courses.find((c) => c.id === id)
+  const shared = useMemo(() => {
+    if (!['shared', 'shared-map'].includes(section)) return null
+    try {
+      const payload = new URLSearchParams(rawRoute.split('?')[1]).get('data')
+      if (!payload || payload.length > 24000) return null
+      return parseCourse(
+        JSON.parse(
+          new TextDecoder().decode(
+            Uint8Array.from(atob(payload), (c) => c.charCodeAt(0)),
+          ),
+        ),
+      )
+    } catch {
+      return null
+    }
+  }, [rawRoute, section])
+  const titles: Record<string, string> = {
+    home: SERVICE_NAME,
+    places: '장소 찾기',
+    search: '장소·행사 검색',
+    festivals: id ? '행사 상세' : '축제와 행사',
+    'festival-itinerary': '행사 하루 일정',
+    'festival-shared': '함께하는 행사 일정',
+    plan: '하루 코스 만들기',
+    events: id ? '행사 상세' : '행사 찾기',
+    map: '행사 지도',
+    sources: '신청·출처 안내',
+    configure: '하루 코스 만들기',
+    course: '추천 하루 일정',
+    'course-map': '오늘의 동선',
+    'event-map': '행사 위치',
+    saved: app.user?.name ?? '내 코스',
+    settings: '설정',
+    mypage: '마이페이지',
+    recommendations: '맞춤 추천',
+    notifications: '알림 설정',
+    privacy: '개인정보 관리',
+    account: '로그인 정보',
+    notices: id ? '공지사항 상세' : '공지사항',
+    contact: '문의하기',
+    guide: '이용 가이드',
+    shared: '함께하는 하루',
+    'shared-map': '공유 일정 동선',
+    login: '로그인',
+    register: '회원가입',
+    'reset-password': '비밀번호 찾기',
+    onboarding: SERVICE_NAME,
+    splash: SERVICE_NAME,
+    conditions: '검색 조건',
+    generating: '하루 연결하기',
+    replace: '다른 먹거리 추천',
+    manual: '식사 계획 입력',
+    share: '저장 · 공유',
+    'saved-courses': '내 코스',
+    differences: '안내 차이 확인',
+    origin: '출발지 설정',
+    'delete-course': '코스 삭제',
+    help: '이럴 땐 이렇게',
+    calendar: '행사 캘린더',
+    'contact-complete': '문의 접수 완료',
+    'logout-complete': '로그인 안내',
+    'design-review': 'Figma 전체 화면',
+    facilities: SERVICE_NAME,
+  }
+  const title = titles[section] ?? SERVICE_NAME
+  const auth = [
+    'login',
+    'register',
+    'reset-password',
+    'onboarding',
+    'splash',
+  ].includes(section)
+  const settingsArea = [
+    'mypage',
+    'saved',
+    'settings',
+    'notifications',
+    'privacy',
+    'account',
+    'notices',
+    'contact',
+    'calendar',
+    'contact-complete',
+    'logout-complete',
+    'delete-course',
+  ].includes(section)
+  const action =
+    ['configure', 'course', 'shared'].includes(section) ||
+    (section === 'events' && !!id)
+  const myArea = [
+    'mypage',
+    'settings',
+    'notifications',
+    'privacy',
+    'account',
+    'notices',
+    'contact',
+    'contact-complete',
+    'logout-complete',
+    'guide',
+    'help',
+  ].includes(section)
+  const savedArea = ['saved', 'saved-courses', 'delete-course'].includes(
+    section,
+  )
+  useEffect(() => {
+    document.title = SERVICE_NAME
+    window.scrollTo({ top: 0 })
+    document.querySelector<HTMLElement>('main')?.focus({ preventScroll: true })
+  }, [rawRoute, title])
+  let content: ReactNode
+  switch (section) {
+    case 'mypage':
+      content = <MyPage key={app.user?.id ?? 'guest'} />
+      break
+    case 'recommendations':
+      content = (
+        <Personalized key={rawRoute} params={rawRoute.split('?')[1] ?? ''} />
+      )
+      break
+    case 'search':
+      content = teamBackend.enabled ? (
+        <Search
+          key={query.get('q') ?? ''}
+          query={query.get('q')?.trim() || '용인'}
+          eventPage={routePage('eventPage', 0, 416, 0)}
+          placePage={routePage('placePage', 1, 45, 1)}
+        />
+      ) : (
+        <Places query={query.get('q')?.trim() || '용인 관광명소'} />
+      )
+      break
+    case 'festivals':
+      content = <TeamFestivals key={id} id={id} />
+      break
+    case 'festival-itinerary':
+      content = <FestivalItinerary key={id} id={id} />
+      break
+    case 'festival-shared':
+      content = <FestivalShared key={id} id={id} />
+      break
+    case 'conditions':
+      content = <SearchConditions />
+      break
+    case 'generating':
+      content = <Generating eventId={id} />
+      break
+    case 'origin':
+      content = <Origin eventId={id} />
+      break
+    case 'replace':
+      content = course ? (
+        <ReplacePlace course={course} stopId={query.get('stop') ?? ''} />
+      ) : (
+        <Missing />
+      )
+      break
+    case 'manual':
+      content = course ? (
+        <ManualEntry course={course} stopId={query.get('stop') ?? ''} />
+      ) : (
+        <Missing />
+      )
+      break
+    case 'share':
+      content = course ? <SaveShare course={course} /> : <Missing />
+      break
+    case 'delete-course':
+      content = course ? <DeleteCourse course={course} /> : <Missing />
+      break
+    case 'saved-courses':
+      content = <Saved standalone />
+      break
+    case 'differences':
+      content = <Differences eventId={id} />
+      break
+    case 'calendar':
+      content = <MonthCalendar />
+      break
+    case 'help':
+      content = <Help />
+      break
+    case 'contact-complete':
+      content = <ContactComplete />
+      break
+    case 'logout-complete':
+      content = <LogoutComplete />
+      break
+    case 'design-review':
+      content = <DesignReview />
+      break
+    case 'home':
+      content = <Home />
+      break
+    case 'places': {
+      const requestedPage = Number(query.get('page') ?? 1)
+      content = (
+        <Places
+          query={query.get('q')?.trim() || '용인 관광명소'}
+          page={
+            Number.isInteger(requestedPage) &&
+            requestedPage >= 1 &&
+            requestedPage <= 45
+              ? requestedPage
+              : 1
+          }
+          mapView={query.get('view') === 'map'}
+        />
+      )
+      break
+    }
+    case 'plan':
+      content =
+        course && isRealCourse(course) ? (
+          <RealCoursePlan key={course.id} course={course} />
+        ) : (
+          <Missing message="코스를 만들 실제 장소를 먼저 선택해 주세요." />
+        )
+      break
+    case 'events':
+      content = id ? (
+        event ? (
+          <Detail event={event} />
+        ) : (
+          <Missing message="행사 정보를 찾을 수 없어요." />
+        )
+      ) : livePlaces ? (
+        <Places query={app.filters.query || '용인 관광명소'} />
+      ) : (
+        <Events />
+      )
+      break
+    case 'map':
+      content = livePlaces ? (
+        <Places query={app.filters.query || '용인 관광명소'} mapView />
+      ) : (
+        <Events mapView />
+      )
+      break
+    case 'sources':
+      content = event ? (
+        <Sources event={event} />
+      ) : (
+        <Missing message="행사 출처 정보를 찾을 수 없어요." />
+      )
+      break
+    case 'configure':
+      content = event ? (
+        <Configure key={event.id} event={event} />
+      ) : (
+        <Missing message="일정을 만들 행사를 먼저 선택해 주세요." />
+      )
+      break
+    case 'course':
+      content = course ? (
+        <Itinerary course={course} />
+      ) : (
+        <Missing message="이 브라우저에 저장된 코스가 없어요." />
+      )
+      break
+    case 'course-map':
+      content = course ? <CourseMap course={course} /> : <Missing />
+      break
+    case 'event-map':
+      content = event ? <CourseMap event={event} /> : <Missing />
+      break
+    case 'shared':
+      content = shared ? (
+        <Itinerary course={shared} shared />
+      ) : (
+        <Missing message="공유 링크를 확인해 주세요." />
+      )
+      break
+    case 'shared-map':
+      content = shared ? (
+        <CourseMap course={shared} />
+      ) : (
+        <Missing message="공유 링크를 확인해 주세요." />
+      )
+      break
+    case 'saved':
+      content = <Saved />
+      break
+    case 'settings':
+      content = <Settings />
+      break
+    case 'notifications':
+      content = <Notifications />
+      break
+    case 'privacy':
+      content = <Privacy />
+      break
+    case 'account':
+      content = <Account />
+      break
+    case 'notices':
+      content = <Notices id={id} />
+      break
+    case 'contact':
+      content = <Contact />
+      break
+    case 'guide':
+      content = <Guide />
+      break
+    case 'login':
+      content = <Login key="login" />
+      break
+    case 'register':
+      content = <Login key="register" mode="register" />
+      break
+    case 'reset-password':
+      content = <Login key="reset" mode="reset" />
+      break
+    case 'onboarding':
+      content = <Onboarding />
+      break
+    case 'splash':
+      content = <Onboarding splash />
+      break
+    default:
+      content = <Missing />
+  }
+  const needsCatalog = [
+    'events',
+    'map',
+    'sources',
+    'configure',
+    'event-map',
+    'conditions',
+    'generating',
+    'origin',
+    'replace',
+    'manual',
+    'differences',
+    'calendar',
+  ].includes(section)
+  if (section === 'facilities')
+    return (
+      <div className="app-shell facility-shell">
+        {app.preview && (
+          <div className="preview-control">
+            <a href="#/design-review">← 50개 프레임 목록</a>
+            <span>{app.preview.id}</span>
+          </div>
+        )}
+        <Facilities
+          key={`${parts[2] ?? 'home'}-${query.get('q') ?? ''}`}
+          path={route}
+          query={query}
+        />
+      </div>
+    )
+  return (
+    <div
+      className={`app-shell screen-${section} ${settingsArea || section === 'generating' ? 'gradient-shell' : ''} ${section === 'guide' || section === 'help' ? 'guide-shell' : ''} ${auth ? 'auth-shell' : ''} ${app.preview ? 'frame-preview' : ''} ${section === 'saved' ? 'saved-shell' : ''}`}
+    >
+      {app.preview && (
+        <>
+          <div className="preview-control">
+            <a href="#/design-review">← 50개 프레임 목록</a>
+            <span>{app.preview.id}</span>
+          </div>
+          <div className="preview-status">
+            <strong>9:41</strong>
+            <img src="/figma/preview-status.svg" alt="" />
+          </div>
+        </>
+      )}
+      <a
+        className="skip-link"
+        href="#main-content"
+        onClick={(e) => {
+          e.preventDefault()
+          document.getElementById('main-content')?.focus()
+        }}
+      >
+        본문으로 건너뛰기
+      </a>
+      {!auth && section !== 'home' && (
+        <header
+          className={`app-header ${settingsArea ? 'settings-header' : ''} ${['conditions', 'course', 'course-map', 'replace', 'manual', 'share', 'saved-courses', 'differences', 'origin', 'sources', 'generating'].includes(section) ? 'compact-header' : ''} ${['guide', 'help', 'saved'].includes(section) ? 'profile-header' : ''}`}
+        >
+          {['guide', 'help', 'saved'].includes(section) ? (
+            <span className="profile-header-title">
+              {section === 'saved' ? (
+                <>
+                  <img src="/figma/current-saved-empty-imgGroup8.svg" alt="" />
+                  {app.user?.name ?? '게스트'}
+                </>
+              ) : (
+                title
+              )}
+            </span>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="icon-button back"
+                aria-label="뒤로 가기"
+                onClick={() => {
+                  if (Number(window.history.state?.yonginDepth) > 0)
+                    window.history.back()
+                  else go('/')
+                }}
+              >
+                <img src="/figma/ui-back.svg" alt="" />
+              </button>
+              <span>{title}</span>
+            </>
+          )}
+          <a className="icon-button" href="#/settings" aria-label="설정">
+            <img
+              src={
+                section === 'saved'
+                  ? '/figma/current-saved-empty-imgGroup9.svg'
+                  : '/figma/ui-dots.svg'
+              }
+              alt=""
+            />
+          </a>
+        </header>
+      )}
+      <PageContainer>
+        <div
+          id="main-content"
+          tabIndex={-1}
+          className={action ? 'page-content has-action' : 'page-content'}
+        >
+          {app.storageError && (
+            <p className="error" role="alert">
+              {app.storageError}
+            </p>
+          )}
+          {app.error && needsCatalog && (
+            <div className="error" role="alert">
+              <p>
+                {app.error}
+                {app.data ? ' 마지막으로 불러온 정보를 표시하고 있어요.' : ''}
+              </p>
+              <button
+                type="button"
+                className="text-button"
+                disabled={app.refreshing}
+                onClick={() => void app.reload()}
+              >
+                다시 불러오기
+              </button>
+            </div>
+          )}
+          {app.loading && needsCatalog ? (
+            <div className="loading-state" role="status">
+              <Brand />
+              <p>가까운 곳의 즐거움을 찾고 있어요…</p>
+              <div className="skeleton" />
+              <div className="skeleton" />
+            </div>
+          ) : (
+            content
+          )}
+          {!auth && section !== 'home' && (
+            <footer className="data-footer">
+              {teamBackend.enabled &&
+              [
+                'festivals',
+                'festival-itinerary',
+                'festival-shared',
+                'calendar',
+                'search',
+              ].includes(section)
+                ? '행사 서버 제공 정보 / 공식 출처에서 최신 운영 정보를 확인해 주세요.'
+                : livePlaces &&
+                    ([
+                      'home',
+                      'places',
+                      'map',
+                      'plan',
+                      'saved',
+                      'saved-courses',
+                    ].includes(section) ||
+                      (course && isRealCourse(course)) ||
+                      (shared && isRealCourse(shared)) ||
+                      (section === 'events' && !id))
+                  ? '실제 장소 정보 · 카카오맵 제공 · 운영 정보는 상세 페이지에서 확인해 주세요.'
+                  : !app.preview && (teamBackend.enabled || livePlaces)
+                    ? '운영 정보는 공식 출처에서 확인해 주세요. 저장한 코스는 이 브라우저에 보관됩니다.'
+                    : isDemo
+                      ? '시연 데이터 · 실제 행사·장소·요금과 다를 수 있어요.'
+                      : app.data
+                        ? `정보 갱신 ${new Date(app.data.updatedAt).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}`
+                        : '정보를 불러오지 못했어요.'}
+              {!isDemo && (
+                <button
+                  type="button"
+                  className="text-button tiny"
+                  disabled={app.refreshing}
+                  onClick={() => void app.reload()}
+                >
+                  {app.refreshing ? '갱신 중…' : '새로고침 ↻'}
+                </button>
+              )}
+            </footer>
+          )}
+        </div>
+      </PageContainer>
+      {!auth && (
+        <nav className="bottom-nav" aria-label="주 메뉴">
+          {(
+            [
+              [
+                '/',
+                'search',
+                livePlaces ? '장소 찾기' : '행사 찾기',
+                !myArea && !savedArea,
+              ],
+              ['/saved', 'heart', '내 코스', savedArea],
+              ['/mypage', 'my', 'MY', myArea],
+            ] as const
+          ).map(([path, icon, label, active]) => (
+            <a
+              key={path}
+              href={`#${path}`}
+              className={active ? 'active' : ''}
+              aria-current={active ? 'page' : undefined}
+            >
+              <NavIcon name={icon} active={active} />
+              <span>{label}</span>
+            </a>
+          ))}
+        </nav>
+      )}
+      {app.preview && (
+        <div className="preview-home-indicator">
+          <span />
+        </div>
+      )}
+      {app.toast && (
+        <div role="status" className="toast">
+          {app.toast}
+        </div>
+      )}
+    </div>
+  )
+}
+export default function App() {
+  const route = useRoute()
+  const frame = isDemo
+    ? findDesignFrame(new URLSearchParams(route.split('?')[1]).get('frame'))
+    : undefined
+  return (
+    <AppErrorBoundary>
+      <AppProvider key={frame?.id ?? 'live'} previewId={frame?.id}>
+        <Shell />
+      </AppProvider>
+    </AppErrorBoundary>
+  )
+}

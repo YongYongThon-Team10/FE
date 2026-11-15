@@ -1,0 +1,464 @@
+{
+  "1": {
+    "data": {
+      "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
+      "refreshToken": "eyJhbGciOiJIUzI1NiJ9...",
+      "email": "user@example.com",
+      "name": "홍길동"
+    },
+    "error": {
+      "code": null,
+      "message": null
+    }
+  },
+  "5": {
+    "data": {
+      "totalCount": 1,
+      "page": 0,
+      "size": 20,
+      "events": [
+        {
+          "eventId": "YI-1714",
+          "name": "가을 음악회",
+          "summary": null,
+          "category": "공연",
+          "subCategory": "공연",
+          "themeLabel": null,
+          "startDate": "2026-11-14",
+          "endDate": "2026-11-14",
+          "dateStatus": "확정",
+          "time": "11:00 ~ 12:00",
+          "placeName": "수지구청 대강당",
+          "address": "경기도 용인시 수지구 포은대로 435",
+          "district": "수지구",
+          "indoorOutdoor": null,
+          "lat": 37.322,
+          "lng": 127.098,
+          "coordPrecision": "place",
+          "fee": "무료",
+          "isFree": true,
+          "applyType": null,
+          "applyUrl": null,
+          "tags": ["무료"],
+          "sourceUrl": "https://www.yongin.go.kr/...",
+          "thumbnailUrl": null,
+          "distanceKm": null,
+          "hasDiscrepancy": false,
+          "isLiked": false
+        }
+      ]
+    },
+    "error": {
+      "code": null,
+      "message": null
+    }
+  },
+  "6": {
+    "data": {
+      "eventId": "YI-0003",
+      "name": "흥.화. 잊혀진 교실을 열다",
+      "summary": null,
+      "category": "행사",
+      "subCategory": "전시",
+      "district": "기흥구",
+      "indoorOutdoor": null,
+      "imageUrl": null,
+      "tags": [],
+      "hasDiscrepancy": false,
+      "isLiked": false,
+      "keyInfo": {
+        "startDate": "2025-05-27",
+        "endDate": "2026-02-08",
+        "dateStatus": "확정",
+        "time": null,
+        "runningTimeMin": null,
+        "placeName": "용인시박물관 1층 기획전시실",
+        "address": "경기도 용인시 기흥구 동백3로 79",
+        "district": "기흥구",
+        "indoorOutdoor": null,
+        "lat": 37.27387098,
+        "lng": 127.15721472,
+        "coordPrecision": "place",
+        "fee": null,
+        "isFree": null,
+        "target": null
+      },
+      "notice": null,
+      "apply": {
+        "type": null,
+        "text": null,
+        "channelType": null,
+        "label": null,
+        "url": null,
+        "receiptStart": null,
+        "receiptEnd": null,
+        "status": null
+      },
+      "programs": [],
+      "sources": [
+        {
+          "name": "용인시청 문화관광포털",
+          "type": "official",
+          "url": "https://www.yongin.go.kr/..."
+        },
+        {
+          "name": "공공데이터포털 용인시 문화행사공연 CSV",
+          "type": "official",
+          "url": "https://www.data.go.kr/..."
+        }
+      ]
+    },
+    "error": {
+      "code": null,
+      "message": null
+    }
+  },
+  "7": {
+    "data": {
+      "eventId": "YI-0003",
+      "hasDiscrepancy": false,
+      "items": []
+    },
+    "error": {
+      "code": null,
+      "message": null
+    }
+  },
+  "8": {
+    "data": {
+      "parsed": true,
+      "conditions": {
+        "dateFrom": "2026-11-14",
+        "dateTo": "2026-11-15",
+        "district": ["기흥구"],
+        "dong": ["신갈동"],
+        "companion": "kids",
+        "kidsAge": null,
+        "budget": "free",
+        "indoorOutdoor": "outdoor"
+      },
+      "unresolved": [],
+      "message": null
+    },
+    "error": {
+      "code": null,
+      "message": null
+    }
+  },
+  "9": {
+    "data": {
+      "places": [
+        {
+          "name": "기흥역 수인분당선",
+          "address": "경기 용인시 기흥구 구갈로 지하 1",
+          "lat": 37.275,
+          "lng": 127.115
+        }
+      ]
+    },
+    "error": {
+      "code": null,
+      "message": null
+    }
+  },
+  "10": {
+    "data": {
+      "eventId": "YI-0003",
+      "favorited": true
+    },
+    "error": {
+      "code": null,
+      "message": null
+    }
+  },
+  "11": {
+    "data": {
+      "eventId": "YI-0003",
+      "favorited": false
+    },
+    "error": {
+      "code": null,
+      "message": null
+    }
+  },
+  "12": {
+    "data": {
+      "itineraryId": "itn_a1b2c3d4",
+      "title": "가을 음악회 중심 하루",
+      "baseEventId": "YI-1714",
+      "date": "2026-11-14",
+      "transport": "transit",
+      "timeWindow": {
+        "start": "10:00",
+        "end": "18:00"
+      },
+      "totalCost": 0,
+      "costUnknownCount": 1,
+      "coverImageUrl": null,
+      "isSaved": false,
+      "slots": [
+        {
+          "slotId": "slt_1",
+          "order": 1,
+          "type": "event",
+          "title": "가을 음악회",
+          "eventId": "YI-1714",
+          "startTime": "11:00",
+          "endTime": "12:00",
+          "durationMin": 60,
+          "costAmount": 0,
+          "costText": "무료",
+          "description": null,
+          "timeBasis": "official",
+          "place": {
+            "name": "수지구청 대강당",
+            "address": "경기도 용인시 수지구 포은대로 435",
+            "lat": 37.322,
+            "lng": 127.098
+          },
+          "isUserAdded": false,
+          "moveFromPrev": {
+            "mode": "transit",
+            "distanceKm": 6.1,
+            "estimatedMinutes": 25,
+            "isEstimate": true,
+            "mapLink": "https://map.kakao.com/link/to/수지구청 대강당,37.322,127.098"
+          }
+        },
+        {
+          "slotId": "slt_2",
+          "order": 2,
+          "type": "meal",
+          "title": "식사",
+          "eventId": null,
+          "startTime": "12:05",
+          "endTime": "13:05",
+          "durationMin": 60,
+          "costAmount": null,
+          "costText": null,
+          "description": null,
+          "timeBasis": "suggested",
+          "place": null,
+          "isUserAdded": false,
+          "moveFromPrev": null
+        },
+        {
+          "slotId": "slt_3",
+          "order": 3,
+          "type": "return",
+          "title": "집으로 돌아가기",
+          "eventId": null,
+          "startTime": "13:05",
+          "endTime": "13:30",
+          "durationMin": 25,
+          "costAmount": null,
+          "costText": null,
+          "description": null,
+          "timeBasis": "suggested",
+          "place": {
+            "name": "기흥역",
+            "address": "기흥역",
+            "lat": 37.275,
+            "lng": 127.115
+          },
+          "isUserAdded": false,
+          "moveFromPrev": {
+            "mode": "transit",
+            "distanceKm": 6.1,
+            "estimatedMinutes": 25,
+            "isEstimate": true,
+            "mapLink": "https://map.kakao.com/link/to/기흥역,37.275,127.115"
+          }
+        }
+      ],
+      "warnings": [
+        {
+          "code": "NO_NEARBY_EVENT",
+          "message": "조건에 맞는 근처 행사가 없어요."
+        }
+      ],
+      "crowdLevel": null,
+      "crowdLabel": null
+    },
+    "error": {
+      "code": null,
+      "message": null
+    }
+  },
+  "17": {
+    "data": {
+      "slotId": "slt_2",
+      "type": "nearbyEvent",
+      "candidates": [
+        {
+          "candidateId": "cnd_1",
+          "kind": "event",
+          "eventId": "YI-0003",
+          "name": "흥.화. 잊혀진 교실을 열다",
+          "category": "행사",
+          "placeName": "용인시박물관 1층 기획전시실",
+          "lat": 37.27387098,
+          "lng": 127.15721472,
+          "time": null,
+          "durationMin": 60,
+          "costAmount": null,
+          "costText": null,
+          "distanceKmFromPrev": 2.3,
+          "estimatedMinutes": 12,
+          "description": null,
+          "source": "event"
+        }
+      ]
+    },
+    "error": {
+      "code": null,
+      "message": null
+    }
+  },
+  "18": {
+    "data": {
+      "slotId": "slt_2",
+      "type": "meal",
+      "candidates": [
+        {
+          "candidateId": "cnd_m1",
+          "kind": "meal",
+          "eventId": null,
+          "name": "물빛 국수집",
+          "category": "먹거리",
+          "placeName": "물빛 국수집",
+          "lat": null,
+          "lng": null,
+          "time": null,
+          "durationMin": 50,
+          "costAmount": 9000,
+          "costText": "9,000원",
+          "distanceKmFromPrev": 0.7,
+          "estimatedMinutes": null,
+          "description": "아이와 함께 먹기 좋은 메뉴를 가정한 곳이에요.",
+          "source": "sample"
+        }
+      ]
+    },
+    "error": {
+      "code": null,
+      "message": null
+    }
+  },
+  "21": {
+    "data": {
+      "shareId": "shr_x7k2pq",
+      "shareUrl": "https://example.com/shared/shr_x7k2pq",
+      "title": "가을 음악회 중심 하루"
+    },
+    "error": {
+      "code": null,
+      "message": null
+    }
+  },
+  "22": {
+    "data": {
+      "shareId": "shr_x7k2pq",
+      "title": "가을 음악회 중심 하루",
+      "date": "2026-11-14",
+      "companion": "kids",
+      "slotCount": 3,
+      "totalCost": 0,
+      "costUnknownCount": 1,
+      "coverImageUrl": null,
+      "slots": [
+        {
+          "order": 1,
+          "type": "event",
+          "title": "가을 음악회",
+          "startTime": "11:00",
+          "endTime": "12:00",
+          "durationMin": 60,
+          "costText": "무료",
+          "place": {
+            "name": "수지구청 대강당",
+            "lat": 37.322,
+            "lng": 127.098
+          }
+        }
+      ]
+    },
+    "error": {
+      "code": null,
+      "message": null
+    }
+  },
+  "23": {
+    "data": {
+      "courseId": "crs_1",
+      "itineraryId": "itn_a1b2c3d4",
+      "title": "아이랑 토요일",
+      "isSaved": true,
+      "savedAt": "2026-11-14T10:30:00"
+    },
+    "error": {
+      "code": null,
+      "message": null
+    }
+  },
+  "24": {
+    "data": {
+      "totalCount": 1,
+      "page": 0,
+      "size": 20,
+      "courses": [
+        {
+          "courseId": "crs_1",
+          "itineraryId": "itn_a1b2c3d4",
+          "title": "아이랑 토요일",
+          "date": "2026-11-14",
+          "companion": "kids",
+          "transport": "transit",
+          "slotCount": 3,
+          "summary": "가을 음악회 (가운데점) 주변 먹거리 (가운데점) 볼거리 (가운데점) 귀가까지 3개 일정",
+          "mealSummary": null,
+          "coverImageUrl": null,
+          "savedAt": "2026-11-14T10:30:00"
+        }
+      ]
+    },
+    "error": {
+      "code": null,
+      "message": null
+    }
+  },
+  "25": {
+    "data": {
+      "courseId": "crs_1",
+      "deleted": true
+    },
+    "error": {
+      "code": null,
+      "message": null
+    }
+  },
+  "26": {
+    "data": {
+      "month": "2026-11",
+      "events": [
+        {
+          "eventId": "YI-0003",
+          "name": "흥.화. 잊혀진 교실을 열다",
+          "startDate": "2025-05-27",
+          "endDate": "2026-02-08"
+        }
+      ],
+      "courses": [
+        {
+          "itineraryId": "itn_a1b2c3d4",
+          "title": "아이랑 토요일",
+          "date": "2026-11-14"
+        }
+      ]
+    },
+    "error": {
+      "code": null,
+      "message": null
+    }
+  }
+}

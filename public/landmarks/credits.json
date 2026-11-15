@@ -1,0 +1,72 @@
+[
+  {
+    "slug": "everland",
+    "source": "https://commons.wikimedia.org/wiki/File:Everland_Magic_tree.jpg",
+    "originalUrl": "https://upload.wikimedia.org/wikipedia/commons/3/3f/Everland_Magic_tree.jpg",
+    "downloadUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3f/Everland_Magic_tree.jpg/1280px-Everland_Magic_tree.jpg",
+    "author": "Wikiwater2020",
+    "license": "CC BY-SA 3.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+    "file": "everland.webp",
+    "changes": "Resized, converted to WebP; displayed with CSS cropping. Derivative photograph retains its original license.",
+    "checkedAt": "2026-11-14"
+  },
+  {
+    "slug": "folk-village",
+    "source": "https://commons.wikimedia.org/wiki/File:Korea_Yongin_Folk_Village.jpg",
+    "originalUrl": "https://upload.wikimedia.org/wikipedia/commons/3/3c/Korea_Yongin_Folk_Village.jpg",
+    "downloadUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3c/Korea_Yongin_Folk_Village.jpg/1280px-Korea_Yongin_Folk_Village.jpg",
+    "author": "ChenGui",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "file": "folk-village.webp",
+    "changes": "Resized, converted to WebP; displayed with CSS cropping. Derivative photograph retains its original license.",
+    "checkedAt": "2026-11-14"
+  },
+  {
+    "slug": "hoam",
+    "source": "https://commons.wikimedia.org/wiki/File:Hoammuseum.jpg",
+    "originalUrl": "https://upload.wikimedia.org/wikipedia/commons/7/7f/Hoammuseum.jpg",
+    "downloadUrl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7f/Hoammuseum.jpg/1280px-Hoammuseum.jpg",
+    "author": "Jocelyndurrey",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "file": "hoam.webp",
+    "changes": "Resized, converted to WebP; displayed with CSS cropping. Derivative photograph retains its original license.",
+    "checkedAt": "2026-11-14"
+  },
+  {
+    "slug": "hantaek",
+    "source": "https://commons.wikimedia.org/wiki/File:%ED%95%9C%ED%83%9D%EC%8B%9D%EB%AC%BC%EC%9B%90.jpg",
+    "originalUrl": "https://upload.wikimedia.org/wikipedia/commons/c/c1/%ED%95%9C%ED%83%9D%EC%8B%9D%EB%AC%BC%EC%9B%90.jpg",
+    "downloadUrl": "https://upload.wikimedia.org/wikipedia/commons/c/c1/%ED%95%9C%ED%83%9D%EC%8B%9D%EB%AC%BC%EC%9B%90.jpg",
+    "author": "JKD",
+    "license": "CC BY 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/4.0",
+    "file": "hantaek.webp",
+    "changes": "Resized, converted to WebP; displayed with CSS cropping. Derivative photograph retains its original license.",
+    "checkedAt": "2026-11-14"
+  },
+  {
+    "slug": "wawoojeongsa",
+    "source": "https://gnews.gg.go.kr/news/news_detail.do?number=201803141646176262C076&s_code=C076",
+    "originalUrl": "https://gnews.gg.go.kr/OP_UPDATA/UP_DATA/_FILEZ/201803/20180314164617938879458.jpg",
+    "author": "이주형 / 경기도 꿈나무기자단",
+    "license": "공공누리 제1유형",
+    "licenseUrl": "https://www.kogl.or.kr/info/licenseType1.do",
+    "file": "wawoojeongsa.webp",
+    "changes": "Resized, converted to WebP; displayed with CSS cropping. Derivative photograph retains its original license.",
+    "checkedAt": "2026-11-14"
+  },
+  {
+    "slug": "rural-theme-park",
+    "source": "https://www.yongin.go.kr/user/bbs/BD_selectBbs.do?q_bbsCode=1020&q_bbscttSn=20240418094853066",
+    "originalUrl": "https://www.yongin.go.kr/webcontent/upload/bbs/2024/4/18/4f5af633-0151-41f9-8436-661d532b56b0.jpg",
+    "author": "용인특례시",
+    "license": "공공누리 제1유형",
+    "licenseUrl": "https://www.kogl.or.kr/info/licenseType1.do",
+    "file": "rural-theme-park.webp",
+    "changes": "Resized, converted to WebP; displayed with CSS cropping. Derivative photograph retains its original license.",
+    "checkedAt": "2026-11-14"
+  }
+]
